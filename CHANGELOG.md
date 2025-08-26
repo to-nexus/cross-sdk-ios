@@ -48,6 +48,23 @@ DappSample을 제외한 불필요한 예제 프로젝트들을 제거하여 프�
 - 📱 iPhone 시뮬레이터에서 실행 가능
 - 🔗 CrossSDKSwift 패키지 정상 연동
 
+### 🚀 GitHub 저장소 배포 완료
+CrossSDKSwift 프로젝트가 새로운 독립 저장소에 성공적으로 배포되었습니다.
+
+### 📋 배포 정보
+- **저장소**: https://github.com/to-nexus/cross-sdk-swift
+- **브랜치**: main
+- **커밋 메시지**: `crs-2852: Initial commit - CrossSDKSwift 독립 저장소`
+- **파일 수**: 1,730개 파일 (4.65 MiB)
+- **상태**: ✅ 배포 완료
+
+### 🎯 프로젝트 현황
+- ✅ 독립적인 Git 저장소 생성 완료
+- ✅ 예제 프로젝트 정리 (DappSample만 유지)
+- ✅ 빌드 오류 해결 및 정상 동작 확인
+- ✅ GitHub 저장소 배포 완료
+- ✅ 개발 환경 준비 완료
+
 ---
 
 ## [Unreleased] - Reown Prefix 제거 및 모듈명 변경
