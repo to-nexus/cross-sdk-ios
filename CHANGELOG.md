@@ -123,6 +123,31 @@ pod 'cross-sdk-swift'  # 기본으로 CrossSDKSwift subspec 설치
 - ✅ 모든 의존성 정상 설정
 - ✅ CrossSDKSwift 기본 subspec 동작 확인
 
+### 🗑️ getIdentity() 함수 제거
+더 이상 사용하지 않는 사용자 신원 조회 기능을 완전히 제거했습니다.
+
+### 🔄 제거된 기능들
+- **`BlockchainAPIInteractor.getIdentity()`** - WalletConnect API를 통한 사용자 정보 조회
+- **`Identity` 구조체** - 사용자 이름과 아바타 URL 저장
+- **`Store.identity` 프로퍼티** - 전역 상태에서 신원 정보 관리
+- **`BlockchainAPI.swift`** - getIdentity API 엔드포인트 정의 파일
+
+### 🎨 UI 변경사항
+- **AccountButton**: identity 기반 아바타 → address 기반 그라디언트 아바타
+- **AccountView**: identity 이름 표시 → address 표시로 단순화
+- **아바타 표시**: 모든 아바타를 `W3MAvatarGradient`로 통일
+
+### 🧹 코드 정리
+- 주석 처리된 `getIdentity()` 호출 코드 완전 제거
+- `fetchIdentity()` 함수들을 빈 함수로 변경 (호환성 유지)
+- 불필요한 네트워킹 코드 제거
+
+### 📋 정리 결과
+- **7개 파일 수정** (136줄 → 43줄)
+- **1개 파일 삭제** (`BlockchainAPI.swift`)
+- **빌드 테스트 완료** (DappSample 정상 동작)
+- **기능 단순화** 및 **코드베이스 경량화**
+
 ---
 
 ## [Unreleased] - Reown Prefix 제거 및 모듈명 변경

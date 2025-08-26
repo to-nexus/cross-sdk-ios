@@ -14,7 +14,8 @@ struct ContentView: View {
     @ObservedObject private var sdk = CrossSDKSwift.shared
 
     var body: some View {
-        VStack(spacing: 20) {
+        NavigationView {
+            VStack(spacing: 20) {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
@@ -41,14 +42,20 @@ struct ContentView: View {
                 ChainSwitchView()
             }
 
-            // 개인 서명 테스트 버튼
-            Button("Personal Sign Test") {
-                Task {
-                    await testPersonalSign()
+            // 서명 예제 뷰로 이동
+            if sdk.isConnected {
+                NavigationLink(destination: SigningExampleView()) {
+                    HStack {
+                        Image(systemName: "signature")
+                        Text("서명 예제 테스트")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
                 }
             }
-            .buttonStyle(.bordered)
-            .disabled(!sdk.isConnected)
 
             // ETH 전송 테스트 버튼
             Button("Send ETH Test (0.001 ETH)") {
@@ -58,16 +65,10 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
             .disabled(!sdk.isConnected)
-        }
-        .padding()
-    }
-
-    private func testPersonalSign() async {
-        do {
-            let signature = try await sdk.signMessage("Hello from new CrossSDKSwift DappSample!")
-            print("✅ Personal sign successful: \(signature)")
-        } catch {
-            print("❌ Personal sign error: \(error.localizedDescription)")
+            }
+            .padding()
+            .navigationTitle("CrossSDK DappSample")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 

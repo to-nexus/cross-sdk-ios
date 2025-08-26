@@ -32,6 +32,9 @@ public final class CrossSDKSwift: ObservableObject {
 
     /// Transaction and signing manager
     public let transactionManager = CrossTransactionManager()
+    
+    /// Advanced signing manager for different signature types
+    public let signingManager = CrossSigningManager()
 
     // MARK: - Published Properties
 
@@ -129,6 +132,8 @@ public final class CrossSDKSwift: ObservableObject {
         )
         
         setupEventObservers()
+        
+        signingManager.configure()
     }
 
     // MARK: - Wallet Connection
@@ -179,6 +184,61 @@ public final class CrossSDKSwift: ObservableObject {
     /// - Returns: Signature
     public func signTypedData(_ data: String) async throws -> String {
         return try await transactionManager.signTypedData(data)
+    }
+    
+    // MARK: - Advanced Signing Methods
+    
+    /// Personal Sign - 사용자가 읽을 수 있는 메시지에 서명
+    /// - Parameters:
+    ///   - message: 서명할 메시지
+    ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
+    /// - Returns: 서명 결과
+    public func personalSign(message: String, account: String? = nil) async throws -> CrossSigningResult {
+        let signingAccount = account ?? connectedWallet?.address ?? ""
+        guard !signingAccount.isEmpty else {
+            throw CrossSigningError.noActiveSession
+        }
+        return try await signingManager.personalSign(message: message, account: signingAccount)
+    }
+    
+    /// ETH Sign - 원시 바이트 데이터에 서명 (위험할 수 있음)
+    /// - Parameters:
+    ///   - data: 서명할 32바이트 데이터
+    ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
+    /// - Returns: 서명 결과
+    public func ethSign(data: Data, account: String? = nil) async throws -> CrossSigningResult {
+        let signingAccount = account ?? connectedWallet?.address ?? ""
+        guard !signingAccount.isEmpty else {
+            throw CrossSigningError.noActiveSession
+        }
+        return try await signingManager.ethSign(data: data, account: signingAccount)
+    }
+    
+    /// EIP-712 Typed Data V4 서명 - 구조화된 데이터에 서명
+    /// - Parameters:
+    ///   - typedData: EIP-712 구조화된 데이터
+    ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
+    /// - Returns: 서명 결과
+    public func signTypedDataV4(typedData: EIP712TypedData, account: String? = nil) async throws -> CrossSigningResult {
+        let signingAccount = account ?? connectedWallet?.address ?? ""
+        guard !signingAccount.isEmpty else {
+            throw CrossSigningError.noActiveSession
+        }
+        return try await signingManager.signTypedDataV4(typedData: typedData, account: signingAccount)
+    }
+    
+    /// 간단한 EIP-712 메시지 서명 - 편의 메서드
+    /// - Parameters:
+    ///   - message: 서명할 메시지
+    ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
+    ///   - domain: 도메인 정보 (optional, 기본값 사용)
+    /// - Returns: 서명 결과
+    public func signSimpleMessage(message: String, account: String? = nil, domain: EIP712Domain? = nil) async throws -> CrossSigningResult {
+        let signingAccount = account ?? connectedWallet?.address ?? ""
+        guard !signingAccount.isEmpty else {
+            throw CrossSigningError.noActiveSession
+        }
+        return try await signingManager.signSimpleMessage(message: message, account: signingAccount, domain: domain)
     }
 
     // MARK: - Convenience Methods

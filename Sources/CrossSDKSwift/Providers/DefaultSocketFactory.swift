@@ -58,7 +58,6 @@ final class DefaultWebSocket: NSObject, WebSocketConnecting {
         self.session = URLSession(configuration: .default)
         self.networkMonitor = networkMonitor
         super.init()
-//        observeAppLifecycle()
         observeNetwork()
     }
     

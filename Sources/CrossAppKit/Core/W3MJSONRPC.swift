@@ -7,6 +7,16 @@ public enum W3MJSONRPC: Codable {
         address: String,
         message: String
     )
+    
+    case eth_sign(
+        address: String,
+        data: String
+    )
+    
+    case eth_signTypedData_v4(
+        address: String,
+        typedData: String
+    )
     case eth_signTransaction(
         from: String,
         to: String?,
@@ -53,7 +63,7 @@ public enum W3MJSONRPC: Codable {
         options: WatchAssetOptions
     )
     
-    var rawValues: (method: String, params: [String: Any]) {
+    public var rawValues: (method: String, params: [String: Any]) {
         let json = try! JSONEncoder().encode(self)
         let dictionary = try! JSONSerialization.jsonObject(with: json) as! [String: [String: Any]]
         
