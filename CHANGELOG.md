@@ -1,5 +1,45 @@
 # Changelog
 
+## [2025-01-27] - 다양한 서명 타입 구현 및 Sample 앱 예제 추가
+
+### 🔐 서명 기능 대폭 확장
+CrossSDKSwift에 다양한 서명 타입을 지원하는 완전한 서명 시스템을 구현했습니다.
+
+### 🆕 새로운 서명 타입 지원
+- **Personal Sign** (`personal_sign`) - 사용자가 읽을 수 있는 메시지 서명
+- **ETH Sign** (`eth_sign`) - 원시 바이트 데이터 서명 (위험 경고 포함)  
+- **EIP-712 Typed Data V4** (`eth_signTypedData_v4`) - 구조화된 데이터 서명
+
+### 🏗️ 새로운 클래스 및 모델
+- **`CrossSigningManager`** - 모든 서명 로직을 통합 관리하는 매니저 클래스
+- **`CrossSigningType`** - 서명 타입 enum 및 관련 모델들
+- **`CrossSigningRequest/Result`** - 서명 요청 및 결과 데이터 모델
+- **`EIP712TypedData`** - EIP-712 표준 구조화 데이터 모델
+
+### 📱 DappSample 앱 예제 구현
+- **`SigningExampleView`** - 완전한 서명 테스트 UI
+- 서명 타입별 동적 입력 폼
+- 실시간 데이터 검증 및 에러 처리
+- 서명 결과 상세 보기 모달
+- 클립보드 복사 기능
+
+### 🔧 기술적 개선사항
+- **W3MJSONRPC 확장** - `eth_sign`, `eth_signTypedData_v4` 메서드 추가
+- **앱 라이프사이클 대응** - 백그라운드 전환 시에도 서명 응답 처리
+- **자동 지갑 전환** - `AppKit.launchCurrentWallet()` 통합
+- **지속적 응답 구독** - 앱 상태와 무관한 응답 처리 시스템
+
+### 🎯 사용자 경험 개선
+- 서명 요청 → 지갑 앱 자동 전환 → 응답 처리까지 완전 자동화
+- 직관적인 UI/UX로 각 서명 타입의 특성 명확히 구분
+- 상세한 로깅으로 디버깅 및 문제 해결 지원
+
+### 📊 파일 변경사항
+- **8개 파일 수정**: 1,115줄 추가, 19줄 삭제
+- **3개 새 파일**: `CrossSigningManager.swift`, `CrossSigningType.swift`, `SigningExampleView.swift`
+
+---
+
 ## [2025-01-27] - 예제 프로젝트 정리 및 Git 저장소 초기화
 
 ### 🗂️ 예제 프로젝트 구조 개선
