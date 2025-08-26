@@ -65,6 +65,30 @@ CrossSDKSwift 프로젝트가 새로운 독립 저장소에 성공적으로 배�
 - ✅ GitHub 저장소 배포 완료
 - ✅ 개발 환경 준비 완료
 
+### 🧹 GitHub Actions 및 워크플로우 정리
+CrossSDKSwift 독립 프로젝트에 맞게 불필요한 CI/CD 워크플로우를 제거했습니다.
+
+### 🗑️ 제거된 워크플로우
+- **CI 워크플로우** (`ci.yml`) - Reown 관련 테스트 및 빌드
+- **CD 워크플로우** (`cd.yml`) - 자동 버전 설정 및 CocoaPods 린트
+- **릴리즈 워크플로우** (`release.yml`) - 샘플 앱 자동 배포
+- **빌드 아티팩트** (`build_artifacts.yml`) - 아티팩트 빌드 및 업로드
+- **CocoaPods 배포** (`cocoapods.yml`) - 자동 CocoaPods 배포
+
+### 🗂️ 제거된 디렉토리
+- `.github/actions/` - 커스텀 GitHub Actions
+- `.github/scripts/` - 자동화 스크립트들
+- `.github/workflows/` - 모든 워크플로우 파일
+
+### ✅ 남은 GitHub 설정
+- `.github/ISSUE_TEMPLATE/` - 이슈 템플릿 (유지)
+- `.github/pull_request_template.md` - PR 템플릿 (유지)
+
+### 📋 정리 결과
+- **9개 파일 제거** (433줄 → 17줄)
+- **프로젝트 구조 단순화**
+- **CrossSDKSwift에 맞는 최소한의 GitHub 설정만 유지**
+
 ---
 
 ## [Unreleased] - Reown Prefix 제거 및 모듈명 변경

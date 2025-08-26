@@ -4,15 +4,15 @@ package = JSON.parse(File.read(File.join(__dir__, "Sources/WalletConnectRelay/Pa
 
 Pod::Spec.new do |spec|
 
-  spec.name        = "reown-swift"
+  spec.name        = "cross-sdk-swift"
   spec.version     = package["version"]
-  spec.summary     = "Reown Swift WalletKit & AppKit"
-  spec.description = "Implementation of WalletKit and AppKit"
-  spec.homepage    = "https://reown.com"
+  spec.summary     = "CrossSDKSwift - Easy CROSSx wallet integration for Dapp developers"
+  spec.description = "CrossSDKSwift provides an easy way for Dapp developers to integrate CROSSx wallet connections. It pre-defines common functionality needed when using ReownAppKit, enhancing developer convenience for Dapp development."
+  spec.homepage    = "https://github.com/to-nexus/cross-sdk-swift"
   spec.license     = { :type => 'Apache-2.0', :file => 'LICENSE' }
-  spec.authors          = "Reown, Inc."
+  spec.authors          = "NEXUS"
   spec.source = {
-    :git => 'https://github.com/reown-com/reown-swift.git',
+    :git => 'https://github.com/to-nexus/cross-sdk-swift.git',
     :tag => spec.version.to_s
   }
 
@@ -22,13 +22,24 @@ Pod::Spec.new do |spec|
     'OTHER_SWIFT_FLAGS' => '-DCocoaPods'
   }
 
-  spec.default_subspecs = 'WalletKit'
+  spec.default_subspecs = 'CrossSDKSwift'
+
+  spec.subspec 'CrossSDKSwift' do |ss|
+    ss.source_files = 'Sources/CrossSDKSwift/**/*.{h,m,swift}'
+    ss.dependency 'cross-sdk-swift/CrossAppKit'
+    ss.dependency 'cross-sdk-swift/WalletConnectSign'
+    ss.resource_bundles = {
+      'CrossSDKSwift' => [
+        'Sources/CrossSDKSwift/Resources/*'
+      ]
+    }
+  end
 
   spec.subspec 'WalletKit' do |ss|
     ss.source_files = 'Sources/WalletKit/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectSign'
-    ss.dependency 'reown-swift/WalletConnectPush'
-    ss.dependency 'reown-swift/WalletConnectVerify'
+    ss.dependency 'cross-sdk-swift/WalletConnectSign'
+    ss.dependency 'cross-sdk-swift/WalletConnectPush'
+    ss.dependency 'cross-sdk-swift/WalletConnectVerify'
   end
 
   spec.subspec 'AppKitBackport' do |ss|
@@ -37,7 +48,7 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'AppKitUI' do |ss|
     ss.source_files = 'Sources/AppKitUI/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/AppKitBackport'
+    ss.dependency 'cross-sdk-swift/AppKitBackport'
     ss.resource_bundles = {
       'AppKitUI' => [
         'Sources/AppKitUI/Resources/*'
@@ -47,9 +58,9 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'CrossAppKit' do |ss|
     ss.source_files = 'Sources/CrossAppKit/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectSign'
-    ss.dependency 'reown-swift/AppKitUI'
-    ss.dependency 'reown-swift/AppKitBackport'
+    ss.dependency 'cross-sdk-swift/WalletConnectSign'
+    ss.dependency 'cross-sdk-swift/AppKitUI'
+    ss.dependency 'cross-sdk-swift/AppKitBackport'
     ss.dependency 'DSF_QRCode', '~> 16.1.1'
     ss.dependency 'CoinbaseWalletSDK', '~> 1.0.0'
     ss.resource_bundles = {
@@ -61,50 +72,50 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'WalletConnectSign' do |ss|
     ss.source_files = 'Sources/WalletConnectSign/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectPairing'
-    ss.dependency 'reown-swift/WalletConnectSigner'
-    ss.dependency 'reown-swift/WalletConnectVerify'
-    ss.dependency 'reown-swift/Events'
+    ss.dependency 'cross-sdk-swift/WalletConnectPairing'
+    ss.dependency 'cross-sdk-swift/WalletConnectSigner'
+    ss.dependency 'cross-sdk-swift/WalletConnectVerify'
+    ss.dependency 'cross-sdk-swift/Events'
   end
 
   spec.subspec 'WalletConnectVerify' do |ss|
     ss.source_files = 'Sources/WalletConnectVerify/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectUtils'
-    ss.dependency 'reown-swift/WalletConnectNetworking'
+    ss.dependency 'cross-sdk-swift/WalletConnectUtils'
+    ss.dependency 'cross-sdk-swift/WalletConnectNetworking'
   end
 
   spec.subspec 'WalletConnectSigner' do |ss|
     ss.source_files = 'Sources/WalletConnectSigner/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectNetworking'
+    ss.dependency 'cross-sdk-swift/WalletConnectNetworking'
   end
 
   spec.subspec 'WalletConnectIdentity' do |ss|
     ss.source_files = 'Sources/WalletConnectIdentity/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectNetworking'
-    ss.dependency 'reown-swift/WalletConnectJWT'
+    ss.dependency 'cross-sdk-swift/WalletConnectNetworking'
+    ss.dependency 'cross-sdk-swift/WalletConnectJWT'
   end
 
   spec.subspec 'WalletConnectPush' do |ss|
     ss.source_files = 'Sources/WalletConnectPush/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectNetworking'
-    ss.dependency 'reown-swift/WalletConnectJWT'
+    ss.dependency 'cross-sdk-swift/WalletConnectNetworking'
+    ss.dependency 'cross-sdk-swift/WalletConnectJWT'
   end
 
   spec.subspec 'WalletConnectJWT' do |ss|
     ss.source_files = 'Sources/WalletConnectJWT/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectKMS'
+    ss.dependency 'cross-sdk-swift/WalletConnectKMS'
   end
 
   spec.subspec 'WalletConnectNetworking' do |ss|
     ss.source_files = 'Sources/WalletConnectNetworking/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectRelay'
-    ss.dependency 'reown-swift/HTTPClient'
+    ss.dependency 'cross-sdk-swift/WalletConnectRelay'
+    ss.dependency 'cross-sdk-swift/HTTPClient'
   end
 
   spec.subspec 'WalletConnectPairing' do |ss|
     ss.source_files = 'Sources/WalletConnectPairing/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectNetworking'
-    ss.dependency 'reown-swift/Events'
+    ss.dependency 'cross-sdk-swift/WalletConnectNetworking'
+    ss.dependency 'cross-sdk-swift/Events'
   end
 
   spec.subspec 'CrossRouter' do |ss|
@@ -114,7 +125,7 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'WalletConnectRelay' do |ss|
     ss.source_files = 'Sources/WalletConnectRelay/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectJWT'
+    ss.dependency 'cross-sdk-swift/WalletConnectJWT'
     ss.resource_bundles = {
       'WalletConnect_WalletConnectRelay' => [
          'Sources/WalletConnectRelay/PackageConfig.json'
@@ -124,12 +135,12 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'WalletConnectUtils' do |ss|
     ss.source_files = 'Sources/WalletConnectUtils/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/JSONRPC'
+    ss.dependency 'cross-sdk-swift/JSONRPC'
   end
 
   spec.subspec 'WalletConnectKMS' do |ss|
     ss.source_files = 'Sources/WalletConnectKMS/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectUtils'
+    ss.dependency 'cross-sdk-swift/WalletConnectUtils'
   end
 
   spec.subspec 'Commons' do |ss|
@@ -138,13 +149,13 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'Events' do |ss|
     ss.source_files = 'Sources/Events/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/WalletConnectNetworking'
-    ss.dependency 'reown-swift/WalletConnectUtils'
+    ss.dependency 'cross-sdk-swift/WalletConnectNetworking'
+    ss.dependency 'cross-sdk-swift/WalletConnectUtils'
   end
 
   spec.subspec 'JSONRPC' do |ss|
     ss.source_files = 'Sources/JSONRPC/**/*.{h,m,swift}'
-    ss.dependency 'reown-swift/Commons'
+    ss.dependency 'cross-sdk-swift/Commons'
   end
 
   spec.subspec 'HTTPClient' do |ss|
