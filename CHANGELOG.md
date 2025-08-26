@@ -89,6 +89,40 @@ CrossSDKSwift 독립 프로젝트에 맞게 불필요한 CI/CD 워크플로우�
 - **프로젝트 구조 단순화**
 - **CrossSDKSwift에 맞는 최소한의 GitHub 설정만 유지**
 
+### 📦 CocoaPods 설정 업데이트
+기존 Reown 관련 CocoaPods 설정을 CrossSDKSwift용으로 완전히 업데이트했습니다.
+
+### 🔄 주요 변경사항
+- **파일명 변경**: `reown-swift.podspec` → `cross-sdk-swift.podspec`
+- **패키지명 변경**: `reown-swift` → `cross-sdk-swift`
+- **기본 subspec**: `CrossSDKSwift`로 설정
+- **저장소 정보**: `https://github.com/to-nexus/cross-sdk-swift`로 업데이트
+- **작성자**: `NEXUS`로 변경
+- **설명**: CrossSDKSwift의 목적에 맞게 업데이트
+
+### 📝 CrossSDKSwift Subspec
+```ruby
+spec.subspec 'CrossSDKSwift' do |ss|
+  ss.source_files = 'Sources/CrossSDKSwift/**/*.{h,m,swift}'
+  ss.dependency 'cross-sdk-swift/CrossAppKit'
+  ss.dependency 'cross-sdk-swift/WalletConnectSign'
+  ss.resource_bundles = {
+    'CrossSDKSwift' => ['Sources/CrossSDKSwift/Resources/*']
+  }
+end
+```
+
+### ✅ 사용법
+이제 CocoaPods를 통해 CrossSDKSwift를 설치할 수 있습니다:
+```ruby
+pod 'cross-sdk-swift'  # 기본으로 CrossSDKSwift subspec 설치
+```
+
+### 🔍 검증 완료
+- ✅ `pod spec lint` 통과 (버전 1.1.1)
+- ✅ 모든 의존성 정상 설정
+- ✅ CrossSDKSwift 기본 subspec 동작 확인
+
 ---
 
 ## [Unreleased] - Reown Prefix 제거 및 모듈명 변경

@@ -27,7 +27,7 @@ struct AccountView: View {
                     .frame(height: Spacing.xl)
                 
                 HStack {
-                    (store.identity?.name ?? addressFormatted).map {
+                    addressFormatted.map {
                         Text($0)
                             .font(.title600)
                             .foregroundColor(.Foreground100)
@@ -122,31 +122,7 @@ struct AccountView: View {
         .padding(.top, 40)
         .padding(.bottom)
         .onAppear {
-            Task {
-                do {
-                    //
-                    //TODO: try await blockchainApiInteractor.getBalance()
-                    //
-                } catch {
-                    store.toast = .init(style: .error, message: "Network error")
-                    AppKit.config.onError(error)
-                }
-            }
-            
-            guard store.identity == nil else {
-                return
-            }
-            
-            Task {
-                do {
-                    //
-                    //TODO: try await blockchainApiInteractor.getIdentity()
-                    //
-                } catch {
-                    store.toast = .init(style: .error, message: "Network error")
-                    AppKit.config.onError(error)
-                }
-            }
+            // Account view loaded
         }
         .frame(maxWidth: .infinity)
         .background(Color.Background125)
@@ -156,12 +132,7 @@ struct AccountView: View {
     
     @ViewBuilder
     func avatar() -> some View {
-        if let avatarUrlString = store.identity?.avatar, let url = URL(string: avatarUrlString) {
-            Backport.AsyncImage(url: url)
-                .frame(width: 64, height: 64)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(.GrayGlass010, lineWidth: 8))
-        } else if let address = store.account?.address {
+        if let address = store.account?.address {
             W3MAvatarGradient(address: address)
                 .frame(width: 64, height: 64)
                 .overlay(Circle().stroke(.GrayGlass010, lineWidth: 8))

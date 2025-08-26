@@ -136,14 +136,7 @@ class Web3ModalViewModel: ObservableObject {
     }
     
     func fetchIdentity() {
-        Task { @MainActor in
-            do {
-                try await blockchainApiInteractor.getIdentity()
-            } catch {
-                store.toast = .init(style: .error, message: "Network error")
-                AppKit.config.onError(error)
-            }
-        }
+        // Identity fetching removed - no longer needed
     }
     
     func fetchBalance() {

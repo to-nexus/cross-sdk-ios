@@ -20,7 +20,7 @@ class Store: ObservableObject {
         }
     }
 
-    @Published var identity: Identity?
+
     @Published var balance: Double?
     
     @Published var connectedWith: ConnectionProviderType?

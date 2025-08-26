@@ -7,34 +7,7 @@ class BlockchainAPIInteractor: ObservableObject {
         self.store = store
     }
     
-    func getIdentity() async throws {
-        guard 
-            let account = store.account,
-            store.connectedWith == .wc
-        else { return }
-        
-        let address = account.address
-        let chainId = account.chain.absoluteString
-        let clientId = try? Relay.instance.getClientId()
 
-
-        let httpClient = HTTPNetworkClient(host: "rpc.walletconnect.com")
-        let response = try await httpClient.request(
-            Identity.self,
-            at: BlockchainAPI.getIdentity(
-                params: .init(
-                    address: address,
-                    chainId: chainId,
-                    projectId: AppKit.config.projectId,
-                    clientId: clientId
-                )
-            )
-        )
-        
-        DispatchQueue.main.async { [self] in
-            self.store.identity = response
-        }
-    }
     
     func getBalance() async throws {
         enum GetBalanceError: Error {
@@ -80,10 +53,7 @@ class BlockchainAPIInteractor: ObservableObject {
     }
 }
 
-struct Identity: Codable {
-    let name: String?
-    let avatar: String?
-}
+
 
 struct BalanceRequest: Encodable {
     init(address: String) {
@@ -130,9 +100,7 @@ extension Decimal {
 
 #if DEBUG
 class MockBlockchainAPIInteractor: BlockchainAPIInteractor {
-    override func getIdentity() async throws {
-        // no-op
-    }
+
     
     override func getBalance() async throws {
         // no-op

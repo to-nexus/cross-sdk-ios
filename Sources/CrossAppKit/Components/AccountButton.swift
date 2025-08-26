@@ -132,9 +132,7 @@ struct AccountButtonStyle: ButtonStyle {
     @ViewBuilder
     func avatar() -> some View {
         Group {
-            if let avatarUrlString = store.identity?.avatar, let url = URL(string: avatarUrlString) {
-                Backport.AsyncImage(url: url)
-            } else if let address = store.account?.address {
+            if let address = store.account?.address {
                 W3MAvatarGradient(address: address)
             }
         }
@@ -172,14 +170,7 @@ public struct AccountButton: View {
     }
     
     func fetchIdentity() {
-        Task { @MainActor in
-            do {
-                try await blockchainApiInteractor.getIdentity()
-            } catch {
-                store.toast = .init(style: .error, message: "Network error")
-                AppKit.config.onError(error)
-            }
-        }
+        // Identity fetching removed - no longer needed
     }
     
     func fetchBalance() {
