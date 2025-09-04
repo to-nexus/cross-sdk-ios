@@ -177,7 +177,9 @@ public class CrossChainManager: ObservableObject {
             chainReference: crossChain.rawValue,
             requiredMethods: [
                 "personal_sign",
-                "eth_signTypedData",
+                "eth_signTypedData_v4",
+                "eth_signTransaction",
+                "eth_sign",
                 "eth_sendTransaction"
             ],
             optionalMethods: [

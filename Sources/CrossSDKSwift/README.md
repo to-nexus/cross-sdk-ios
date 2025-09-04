@@ -80,8 +80,8 @@ print("서명: \(signature)")
 ### 5. 트랜잭션 전송
 
 ```swift
-// ETH 전송
-let txHash = try await CrossSDKSwift.shared.sendETH(
+// 네이티브 전송
+let txHash = try await CrossSDKSwift.shared.sendNative(
     to: "0x742d35Cc6634C0532925a3b8D2C0b5C6C8b9c3f7",
     amount: "0.01"
 )

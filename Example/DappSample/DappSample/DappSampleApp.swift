@@ -35,7 +35,7 @@ struct DappSampleApp: App {
             appName: "Cross DappSample",
             appDescription: "Cross SDK Sample App using new CrossSDKSwift",
             appUrl: "https://example.com/dappsample",
-            iconUrls: ["https://avatars.githubusercontent.com/u/37784886"],
+            iconUrls: ["https://contents.crosstoken.io/img/sample_app_circle_icon.png"],
             redirectNative: "dappsample://",
             redirectUniversal: "https://example.com/dappsample/redirect",
             supportedChains: [.crossMainnet, .crossTestnet, .bscMainnet, .kaiaMainnet, .ethereum]

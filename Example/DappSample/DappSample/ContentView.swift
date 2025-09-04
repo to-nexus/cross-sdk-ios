@@ -33,7 +33,7 @@ struct ContentView: View {
 
             // 지갑 연결/해제 버튼
             WalletConnectionView()
-            
+
             // ReownAppKit UI 사용 연결 버튼
             ConnectWalletViaAppKitUI(isConnected: sdk.isConnected)
 
@@ -52,6 +52,18 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                // 전송 예제 뷰로 이동
+                NavigationLink(destination: SendExampleView()) {
+                    HStack {
+                        Image(systemName: "paperplane")
+                        Text("전송 예제 테스트")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
                     .foregroundColor(.white)
                     .cornerRadius(10)
                 }
@@ -76,7 +88,7 @@ struct ContentView: View {
         do {
             // 테스트용 주소 (실제로는 사용자 입력을 받아야 함)
             let testAddress = "0x742d35Cc6634C0532925a3b8D2C0b5C6C8b9c3f7"
-            let txHash = try await sdk.sendETH(to: testAddress, amount: "0.001")
+            let txHash = try await sdk.sendNative(to: testAddress, amount: "0.001")
             print("✅ ETH send successful: \(txHash)")
         } catch {
             print("❌ ETH send error: \(error.localizedDescription)")
@@ -236,7 +248,7 @@ struct ChainSwitchView: View {
         .background(Color.gray.opacity(0.05))
         .cornerRadius(12)
     }
-    
+
     private func createChainSelectionActionSheet() -> ActionSheet {
         var buttons: [ActionSheet.Button] = []
         // 각 체인에 대한 버튼 추가

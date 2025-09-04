@@ -1,7 +1,7 @@
 import Foundation
 
 public struct Chain: Identifiable, Hashable {
-        
+    
     public var id: String {
         "\(chainNamespace):\(chainReference)"
     }
@@ -49,9 +49,14 @@ enum EthUtils {
     static let walletAddEthChain = "wallet_addEthereumChain"
     
     static let ethRequiredMethods = [
-        "personal_sign",
-        "eth_signTypedData",
-        "eth_sendTransaction",
+       "personal_sign",
+       "eth_signTypedData",
+       "eth_signTypedData_v4",
+       "eth_sign",
+       "eth_sendTransaction",
+       "eth_estimateGas",
+       "eth_gasPrice",
+       "eth_maxPriorityFeePerGas"
     ]
     static let ethOptionalMethods = [walletSwitchEthChain, walletAddEthChain]
     static let ethMethods = ethRequiredMethods + ethOptionalMethods
@@ -89,7 +94,7 @@ public enum ChainPresets {
             rpcUrl: "https://testnet.crosstoken.io:22001",
             blockExplorerUrl: "https://testnet.crossscan.io/",
             imageId: "CROSS"
-        ),
+        )
     ]
     public static var crossWalletChains: [Chain] = [
         Chain(
@@ -187,7 +192,7 @@ public enum ChainPresets {
             rpcUrl: "https://sepolia.crosstoken.io/8de52516c154dce8cc2ceaae39d657a1e1e74d2f",
             blockExplorerUrl: "https://sepolia.etherscan.io/",
             imageId: "Ethereum"
-        ),
+        )
     ]
     
     public static var ethChains: [Chain] = [
@@ -246,7 +251,7 @@ public enum ChainPresets {
             requiredMethods: EthUtils.ethRequiredMethods,
             optionalMethods: EthUtils.ethOptionalMethods,
             events: EthUtils.ethEvents,
-            token: .init(name: "BNB",symbol: "BNB",decimal:  18),
+            token: .init(name: "BNB", symbol: "BNB", decimal: 18),
             rpcUrl: "https://rpc.ankr.com/bsc",
             blockExplorerUrl: "https://bscscan.com",
             imageId: "93564157-2e8e-4ce7-81df-b264dbee9b00"
@@ -270,7 +275,7 @@ public enum ChainPresets {
             requiredMethods: EthUtils.ethRequiredMethods,
             optionalMethods: EthUtils.ethOptionalMethods,
             events: EthUtils.ethEvents,
-            token: .init(name: "Gnosis",symbol: "xDAI",decimal: 18),
+            token: .init(name: "Gnosis", symbol: "xDAI", decimal: 18),
             rpcUrl: "https://rpc.gnosischain.com",
             blockExplorerUrl: "https://blockscout.com/xdai/mainnet",
             imageId: "02b53f6a-e3d4-479e-1cb4-21178987d100"
@@ -318,7 +323,7 @@ public enum ChainPresets {
             requiredMethods: EthUtils.ethRequiredMethods,
             optionalMethods: EthUtils.ethOptionalMethods,
             events: EthUtils.ethEvents,
-            token: .init(name: "CELO",symbol: "CELO",decimal: 18),
+            token: .init(name: "CELO", symbol: "CELO", decimal: 18),
             rpcUrl: "https://forno.celo.org",
             blockExplorerUrl: "https://explorer.celo.org/mainnet",
             imageId: "ab781bbc-ccc6-418d-d32d-789b15da1f00"

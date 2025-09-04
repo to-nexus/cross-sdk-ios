@@ -243,14 +243,19 @@ public final class CrossSDKSwift: ObservableObject {
 
     // MARK: - Convenience Methods
 
-    /// Send ETH to an address
+    /// Send native coin to an address
     /// - Parameters:
     ///   - to: Recipient address
-    ///   - amount: Amount in ETH
+    ///   - amount: Amount in native coin units (e.g., ETH)
     /// - Returns: Transaction hash
-    public func sendETH(to address: String, amount: String) async throws -> String {
+    public func sendNative(to address: String, amount: String) async throws -> String {
         let params = CrossTransactionParams(to: address, value: amount)
         return try await sendTransaction(params)
+    }
+
+    @available(*, deprecated, renamed: "sendNative(to:amount:)")
+    public func sendETH(to address: String, amount: String) async throws -> String {
+        return try await sendNative(to: address, amount: amount)
     }
 
     // MARK: - 새로운 상태 관리 메서드
