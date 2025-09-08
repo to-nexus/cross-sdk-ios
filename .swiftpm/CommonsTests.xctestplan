@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "968FE351-B6B1-4A6F-AE50-EC987697602F",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "CommonsTests",
+        "name" : "CommonsTests"
+      }
+    }
+  ],
+  "version" : 1
+}

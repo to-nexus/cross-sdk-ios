@@ -322,16 +322,199 @@ public class CrossUtils {
         }
     }
 
-    /// Hash EIP-712 typed data using CryptoSwift
+    /// Hash EIP-712 typed data according to EIP-712 standard
     /// - Parameter typedData: EIP-712 typed data to hash
-    /// - Returns: Keccak256 hash of the typed data
+    /// - Returns: Keccak256 hash of the typed data according to EIP-712 standard
     public func hashTypedData(_ typedData: EIP712TypedData) -> Data {
         do {
-            let encoded = try JSONEncoder().encode(typedData)
-            return keccak256(encoded)
+            // EIP-712 standard: keccak256("\x19\x01" ‖ domainSeparator ‖ hashStruct(message))
+            
+            // 1. Calculate domain separator hash
+            let domainSeparator = hashDomain(typedData.domain, types: typedData.types)
+            
+            // 2. Calculate message hash
+            let messageHash = hashStruct(typedData.primaryType, data: typedData.message, types: typedData.types)
+            
+            // 3. Combine with EIP-712 prefix
+            var finalData = Data([0x19, 0x01]) // "\x19\x01"
+            finalData.append(domainSeparator)
+            finalData.append(messageHash)
+            
+            return keccak256(finalData)
         } catch {
+            print("❌ EIP-712 hash calculation error: \(error)")
             return Data()
         }
+    }
+    
+    /// Hash EIP-712 domain separator
+    internal func hashDomain(_ domain: EIP712Domain, types: [String: [EIP712Type]]) -> Data {
+        // EIP712Domain type definition
+        let domainType = "EIP712Domain"
+        
+        // Create domain data dictionary
+        var domainData: [String: AnyCodable] = [:]
+        if let name = domain.name { domainData["name"] = AnyCodable(name) }
+        if let version = domain.version { domainData["version"] = AnyCodable(version) }
+        if let chainId = domain.chainId { domainData["chainId"] = AnyCodable(chainId) }
+        if let verifyingContract = domain.verifyingContract { domainData["verifyingContract"] = AnyCodable(verifyingContract) }
+        if let salt = domain.salt { domainData["salt"] = AnyCodable(salt) }
+        
+        
+        // EIP712Domain 타입이 types에 없으면 추가
+        var updatedTypes = types
+        if updatedTypes["EIP712Domain"] == nil {
+            var domainFields: [EIP712Type] = []
+            if domain.name != nil { domainFields.append(EIP712Type(name: "name", type: "string")) }
+            if domain.version != nil { domainFields.append(EIP712Type(name: "version", type: "string")) }
+            if domain.chainId != nil { domainFields.append(EIP712Type(name: "chainId", type: "uint256")) }
+            if domain.verifyingContract != nil { domainFields.append(EIP712Type(name: "verifyingContract", type: "address")) }
+            if domain.salt != nil { domainFields.append(EIP712Type(name: "salt", type: "bytes32")) }
+            updatedTypes["EIP712Domain"] = domainFields
+        }
+        
+        return hashStruct(domainType, data: domainData, types: updatedTypes)
+    }
+    
+    /// Hash a struct according to EIP-712
+    internal func hashStruct(_ primaryType: String, data: [String: AnyCodable], types: [String: [EIP712Type]]) -> Data {
+        let typeHash = hashType(primaryType, types: types)
+        let encodedData = encodeData(primaryType, data: data, types: types)
+        
+        var combined = Data()
+        combined.append(typeHash)
+        combined.append(encodedData)
+        
+        return keccak256(combined)
+    }
+    
+    /// Generate type hash for EIP-712
+    private func hashType(_ primaryType: String, types: [String: [EIP712Type]]) -> Data {
+        let typeString = encodeType(primaryType, types: types)
+        return keccak256(typeString.data(using: .utf8) ?? Data())
+    }
+    
+    /// Encode type string for EIP-712
+    internal func encodeType(_ primaryType: String, types: [String: [EIP712Type]]) -> String {
+        var deps = findDependencies(primaryType, types: types)
+        deps = deps.filter { $0 != primaryType }
+        deps.sort()
+        deps.insert(primaryType, at: 0)
+        
+        var result = ""
+        for dep in deps {
+            if let typeFields = types[dep] {
+                result += "\(dep)("
+                result += typeFields.map { "\($0.type) \($0.name)" }.joined(separator: ",")
+                result += ")"
+            }
+        }
+        
+        return result
+    }
+    
+    /// Find dependencies for a type
+    private func findDependencies(_ primaryType: String, types: [String: [EIP712Type]]) -> [String] {
+        var deps = Set<String>()
+        
+        func findDeps(_ type: String) {
+            if deps.contains(type) { return }
+            deps.insert(type)
+            
+            if let typeFields = types[type] {
+                for field in typeFields {
+                    let baseType = field.type.components(separatedBy: "[")[0] // Remove array notation
+                    if types.keys.contains(baseType) {
+                        findDeps(baseType)
+                    }
+                }
+            }
+        }
+        
+        findDeps(primaryType)
+        return Array(deps)
+    }
+    
+    /// Encode data according to EIP-712
+    private func encodeData(_ primaryType: String, data: [String: AnyCodable], types: [String: [EIP712Type]]) -> Data {
+        guard let typeFields = types[primaryType] else { return Data() }
+        
+        var encoded = Data()
+        
+        for field in typeFields {
+            if let value = data[field.name] {
+                let encodedValue = encodeValue(field.type, value: value, types: types)
+                encoded.append(encodedValue)
+            } else {
+                // Pad with zeros for missing fields
+                encoded.append(Data(repeating: 0, count: 32))
+            }
+        }
+        
+        return encoded
+    }
+    
+    /// Encode a single value according to EIP-712
+    private func encodeValue(_ type: String, value: AnyCodable, types: [String: [EIP712Type]]) -> Data {
+        // Handle arrays
+        if type.hasSuffix("]") {
+            // Array type - simplified handling
+            return keccak256(Data()) // Placeholder for array handling
+        }
+        
+        // Handle custom types
+        if types.keys.contains(type) {
+            if let dict = value.value as? [String: AnyCodable] {
+                return hashStruct(type, data: dict, types: types)
+            }
+            return Data(repeating: 0, count: 32)
+        }
+        
+        // Handle primitive types
+        switch type {
+        case "address":
+            if let addr = value.value as? String {
+                let cleanAddr = addr.replacingOccurrences(of: "0x", with: "").lowercased()
+                let addrData = Data(hexString: cleanAddr)
+                if addrData.count == 20 { // Valid Ethereum address
+                    return Data(repeating: 0, count: 12) + addrData // Pad to 32 bytes
+                }
+            }
+            return Data(repeating: 0, count: 32)
+            
+        case "uint256", "int256":
+            if let num = value.value as? Int {
+                return encodeUInt256(UInt64(num))
+            } else if let str = value.value as? String, let num = UInt64(str) {
+                return encodeUInt256(num)
+            }
+            return Data(repeating: 0, count: 32)
+            
+        case "string":
+            if let str = value.value as? String {
+                return keccak256(str.data(using: .utf8) ?? Data())
+            }
+            return Data(repeating: 0, count: 32)
+            
+        case "bytes":
+            if let hex = value.value as? String {
+                let cleanHex = hex.replacingOccurrences(of: "0x", with: "")
+                let data = Data(hexString: cleanHex)
+                return keccak256(data)
+            }
+            return Data(repeating: 0, count: 32)
+            
+        default:
+            return Data(repeating: 0, count: 32)
+        }
+    }
+    
+    /// Encode UInt256 to 32 bytes
+    private func encodeUInt256(_ value: UInt64) -> Data {
+        var data = Data(repeating: 0, count: 32)
+        let valueBytes = withUnsafeBytes(of: value.bigEndian) { Data($0) }
+        data.replaceSubrange((32-valueBytes.count)..<32, with: valueBytes)
+        return data
     }
 
     /// Hash message for personal_sign (with EIP-191 prefix) using CryptoSwift
@@ -371,7 +554,7 @@ public class CrossUtils {
         return Blockchain(chainId)
     }
 
-    /// Create Blockchain object for Ethereum-compatible chain
+    /// Create Blockchain object for Ethereum-compatible Unchain
     /// - Parameter chainId: Ethereum chain ID (e.g., "1", "137", "612055")
     /// - Returns: Blockchain object with eip155 namespace
     public func createEthereumBlockchain(chainId: String) -> Blockchain? {

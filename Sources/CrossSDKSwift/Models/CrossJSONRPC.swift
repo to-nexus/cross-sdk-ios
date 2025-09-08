@@ -46,6 +46,12 @@ public struct CrossJSONRPCObject: Codable {
 
         return (method, paramsArray)
     }
+    
+    /// 서명 타입 추출
+    public var type: CrossSigningType {
+        let (method, _) = rawValues
+        return CrossSigningType(rawValue: method) ?? .personalSign
+    }
 }
 
 public struct CustomData: Codable {

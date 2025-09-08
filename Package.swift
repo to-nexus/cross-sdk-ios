@@ -39,7 +39,7 @@ var dependencies: [Package.Dependency] = [
 let package = Package(
     name: "cross-sdk-swift",
     platforms: [
-        .iOS(.v13),
+        .iOS(.v14),
         .macOS(.v10_15),
     ],
     products: [
@@ -235,6 +235,9 @@ let package = Package(
         .testTarget(
             name: "EventsTests",
             dependencies: ["Events"]),
+        .testTarget(
+            name: "CrossSDKSwiftTests",
+            dependencies: ["CrossSDKSwift", "Commons", "TestingUtils"]),
 //        .testTarget(
 //            name: "ReownAppKitTests",
 //            dependencies: [

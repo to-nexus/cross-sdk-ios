@@ -41,11 +41,13 @@ public enum CrossSigningType: String, CaseIterable {
 public struct CrossSigningResult {
     public let signature: String
     public let request: CrossJSONRPCObject
+    public let account: String
     public let timestamp: Date
 
-    public init(signature: String, request: CrossJSONRPCObject) {
+    public init(signature: String, request: CrossJSONRPCObject, account: String) {
         self.signature = signature
         self.request = request
+        self.account = account
         self.timestamp = Date()
     }
 }

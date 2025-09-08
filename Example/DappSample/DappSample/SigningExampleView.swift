@@ -1,5 +1,6 @@
 import SwiftUI
 import CrossSDKSwift
+import Commons
 
 struct SigningExampleView: View {
     @State private var selectedSigningType: CrossSigningType = .personalSign
@@ -222,16 +223,36 @@ struct SigningExampleView: View {
                         .foregroundColor(.blue)
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("서명:")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-
-                        Text(result.signature)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(.secondary)
-                            .lineLimit(3)
-                            .truncationMode(.middle)
+                    VStack(alignment: .leading, spacing: 12) {
+                        // 기본 정보
+                        VStack(alignment: .leading, spacing: 8) {
+                            InfoRow(label: "서명 타입", value: result.request.type.displayName)
+                            InfoRow(label: "계정", value: result.account)
+                            
+                            Text("서명:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            Text(result.signature)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(.secondary)
+                                .lineLimit(3)
+                                .truncationMode(.middle)
+                        }
+                        
+                        // 검증 결과
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("검증 결과:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            if let recovered = recoveredAddress {
+                                InfoRow(label: "복구된 주소", value: recovered.prefix(20) + "...")
+                                InfoRow(label: "검증 상태", value: verificationOK ? "✅ OK" : "❌ Mismatch")
+                            } else {
+                                InfoRow(label: "검증 상태", value: "❓ Unknown")
+                            }
+                        }
                     }
                     .padding()
                     .background(Color(.systemGray6))
@@ -527,7 +548,24 @@ struct SigningExampleView: View {
             }
 
         case "eth_signTypedData_v4":
-            if let typed = fetchedTypedData {
+            // 서명 요청에서 직접 typed data 추출
+            if let typedDataDict = params.first as? [String: Any],
+               let typedDataJSON = try? JSONSerialization.data(withJSONObject: typedDataDict),
+               let typed = try? JSONDecoder().decode(EIP712TypedData.self, from: typedDataJSON) {
+                
+                print("🔍 TypedData V4 verification with extracted data")
+                isValid = utils.verifyTypedDataV4(
+                    signature: result.signature,
+                    typedData: typed,
+                    expectedAddress: expectedAddress
+                )
+                recoveredAddr = utils.recoverAddressFromTypedData(
+                    signature: result.signature,
+                    typedData: typed
+                )
+            } else if let typed = fetchedTypedData {
+                // 폴백: API에서 가져온 데이터 사용
+                print("🔍 TypedData V4 verification with fetched data")
                 isValid = utils.verifyTypedDataV4(
                     signature: result.signature,
                     typedData: typed,
@@ -538,6 +576,7 @@ struct SigningExampleView: View {
                     typedData: typed
                 )
             } else {
+                print("❌ No typed data available for verification")
                 isValid = false
                 recoveredAddr = nil
             }
@@ -561,6 +600,9 @@ struct SigningExampleView: View {
         }
         return String(String.UnicodeScalarView(cleaned))
     }
+
+    // MARK: - UI Sections
+
 
     // MARK: - 디버깅 메서드
     private func debugSessionInfo() {

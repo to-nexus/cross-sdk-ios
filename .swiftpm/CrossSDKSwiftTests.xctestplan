@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "8434C1B4-1EAA-4A54-B4D0-60B0F7D2F3D9",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "CrossSDKSwiftTests",
+        "name" : "CrossSDKSwiftTests"
+      }
+    }
+  ],
+  "version" : 1
+}

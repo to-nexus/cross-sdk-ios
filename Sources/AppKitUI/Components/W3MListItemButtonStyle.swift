@@ -52,8 +52,13 @@ public struct W3MListItemButtonStyle<ImageContent: View>: ButtonStyle {
                     )
                     .frame(width: 15 * scale, height: 15 * scale)
                 } else if showChevron {
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.Foreground200)
+                    if #available(macOS 11.0, *) {
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.Foreground200)
+                    } else {
+                        Text(">")
+                            .foregroundColor(.Foreground200)
+                    }
                 }
                 
             }

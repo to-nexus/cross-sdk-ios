@@ -17,7 +17,7 @@ let package = Package(
             name: "DappSample",
             dependencies: [
                 // 새로운 CrossSDKSwift 패키지 사용
-                .product(name: "CrossSDKSwift", package: "reown-swift-1-1-1")
+                .product(name: "CrossSDKSwift", package: "cross-sdk-swift")
             ],
             path: "DappSample",
             resources: [

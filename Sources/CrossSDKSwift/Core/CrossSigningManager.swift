@@ -216,7 +216,8 @@ public class CrossSigningManager: ObservableObject {
 
                 // 저장해둔 원본 요청 사용
                 let original = pending.original
-                let signingResult = CrossSigningResult(signature: signature, request: original)
+                let account = self.extractAccountFromRequest(original)
+                let signingResult = CrossSigningResult(signature: signature, request: original, account: account)
                 pending.completion(.success(signingResult))
                 pendingRequests.removeValue(forKey: requestId)
 
@@ -265,9 +266,14 @@ public class CrossSigningManager: ObservableObject {
                         do {
                             let signature = try result.get(String.self)
                             print("🔐 CrossSigningManager: Signature received: \(signature)")
+                            
+                            // 계정 추출 (요청에서 추출)
+                            let account = self.extractAccountFromRequest(originalRequest)
+                            
                             let signingResult = CrossSigningResult(
                                 signature: signature,
-                                request: originalRequest
+                                request: originalRequest,
+                                account: account
                             )
                             continuation.resume(returning: signingResult)
                         } catch {
@@ -290,6 +296,32 @@ public class CrossSigningManager: ObservableObject {
                 }
             }
         }
+    }
+    
+    /// 요청에서 계정 주소 추출
+    private func extractAccountFromRequest(_ request: CrossJSONRPCObject) -> String {
+        let (method, params) = request.rawValues
+        
+        switch method {
+        case "personal_sign":
+            if params.count >= 2, let address = params[1] as? String {
+                return address
+            }
+        case "eth_sign":
+            if let address = params.first as? String {
+                return address
+            }
+        case "eth_signTypedData_v4":
+            if let typedDataDict = params.first as? [String: Any],
+               let address = typedDataDict["address"] as? String {
+                return address
+            }
+        default:
+            break
+        }
+        
+        // 폴백: 현재 연결된 지갑 주소
+        return CrossSDKSwift.shared.connectedWallet?.address ?? "Unknown"
     }
 }
 
