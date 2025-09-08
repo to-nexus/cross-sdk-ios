@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		13977AD62E443CDE00F0C2AF /* Web3 in Frameworks */ = {isa = PBXBuildFile; productRef = 13977AD52E443CDE00F0C2AF /* Web3 */; };
 		13D5D5E02E5D8F4600FBD9A4 /* CrossSDKSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 13D5D5DF2E5D8F4600FBD9A4 /* CrossSDKSwift */; };
 /* End PBXBuildFile section */
 
@@ -71,7 +70,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				13D5D5E02E5D8F4600FBD9A4 /* CrossSDKSwift in Frameworks */,
-				13977AD62E443CDE00F0C2AF /* Web3 in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -140,7 +138,6 @@
 			);
 			name = DappSample;
 			packageProductDependencies = (
-				13977AD52E443CDE00F0C2AF /* Web3 */,
 				13D5D5DF2E5D8F4600FBD9A4 /* CrossSDKSwift */,
 			);
 			productName = DappSample;
@@ -226,7 +223,6 @@
 			mainGroup = 13A5B2922E434D7900AC12C9;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				13977AD42E443CB400F0C2AF /* XCRemoteSwiftPackageReference "Web3" */,
 				13977AD72E443D4B00F0C2AF /* XCRemoteSwiftPackageReference "CryptoSwift" */,
 				13D5D5DE2E5D8F4600FBD9A4 /* XCLocalSwiftPackageReference "../../../cross-sdk-swift" */,
 			);
@@ -635,14 +631,6 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		13977AD42E443CB400F0C2AF /* XCRemoteSwiftPackageReference "Web3" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.8.8;
-			};
-		};
 		13977AD72E443D4B00F0C2AF /* XCRemoteSwiftPackageReference "CryptoSwift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/krzyzanowskim/CryptoSwift";
@@ -654,11 +642,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		13977AD52E443CDE00F0C2AF /* Web3 */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 13977AD42E443CB400F0C2AF /* XCRemoteSwiftPackageReference "Web3" */;
-			productName = Web3;
-		};
 		13D5D5DF2E5D8F4600FBD9A4 /* CrossSDKSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CrossSDKSwift;

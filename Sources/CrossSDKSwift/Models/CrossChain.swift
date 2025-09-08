@@ -1,4 +1,5 @@
 import Foundation
+import WalletConnectUtils
 import CrossAppKit
 
 /// CrossSDKSwift에서 사용하는 체인 정의 (ChainPresets.crossWalletChains 기반)
@@ -39,24 +40,30 @@ public enum CrossChain: String, CaseIterable {
     public var explorerUrl: String {
         return chainInfo.blockExplorerUrl
     }
-    
+
     /// 체인 네임스페이스
     public var namespace: String {
         return chainInfo.chainNamespace
     }
-    
+
     /// 토큰 정보
     public var tokenName: String {
         return chainInfo.token.name
     }
-    
+
     /// 토큰 소수점 자릿수
     public var decimals: Int {
         return chainInfo.token.decimal
     }
-    
+
     /// 이미지 ID
     public var imageId: String {
         return chainInfo.imageId
+    }
+
+    /// WalletConnect Blockchain 객체 생성
+    /// - Returns: 해당 체인에 대한 Blockchain 객체 (eip155 namespace)
+    public var blockchain: Blockchain? {
+        return Blockchain(namespace: "eip155", reference: self.rawValue)
     }
 }

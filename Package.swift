@@ -10,7 +10,7 @@ let yttriumDebug = false
 var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
     .package(url: "https://github.com/WalletConnect/QRCode", from: "14.3.1"),
-    .package(name: "Web3", url: "https://github.com/Boilertalk/Web3.swift", from: "0.8.0"),
+    .package(url: "https://github.com/web3swift-team/web3swift.git", from: "3.3.1"),
     .package(url: "https://github.com/krzyzanowskim/CryptoSwift", from: "1.8.0"),
     // .package(name: "CoinbaseWalletSDK", url: "https://github.com/MobileWalletProtocol/wallet-mobile-sdk", .upToNextMinor(from: "1.0.0")), // Temporarily removed
 //    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", .upToNextMinor(from: "1.10.0")),
@@ -40,6 +40,7 @@ let package = Package(
     name: "cross-sdk-swift",
     platforms: [
         .iOS(.v13),
+        .macOS(.v10_15),
     ],
     products: [
         .library(
@@ -194,7 +195,7 @@ let package = Package(
             dependencies: [
                 "CrossAppKit", 
                 "AppKitUI",
-                .product(name: "Web3", package: "Web3"),
+                .product(name: "web3swift", package: "web3swift"),
                 .product(name: "CryptoSwift", package: "CryptoSwift")
             ],
             path: "Sources/CrossSDKSwift"

@@ -123,7 +123,7 @@ public class CrossTransactionManager: ObservableObject {
     }
 
     private func getCurrentWallet() -> CrossWallet? {
-        guard let session = AppKit.instance.getSessions().first,
+        guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let account = session.namespaces.values.first?.accounts.first else {
             return nil
         }
@@ -222,7 +222,7 @@ public class CrossTransactionManager: ObservableObject {
             } catch { /* fallback below */ }
         }
         // 2) 실패 시 세션 RPC로 시도 (권한 필요)
-        guard let session = AppKit.instance.getSessions().first,
+        guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let chain = AppKit.instance.getSelectedChain(),
               let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
             throw CrossSDKError.walletNotConnected
@@ -235,7 +235,7 @@ public class CrossTransactionManager: ObservableObject {
         if let rpcUrl = AppKit.instance.getSelectedChain()?.rpcUrl {
             if let v = try? await Web3RPCService.gasPriceHex(rpcUrl: rpcUrl) { return v }
         }
-        guard let session = AppKit.instance.getSessions().first,
+        guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let chain = AppKit.instance.getSelectedChain(),
               let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
             throw CrossSDKError.walletNotConnected
@@ -247,7 +247,7 @@ public class CrossTransactionManager: ObservableObject {
         if let rpcUrl = AppKit.instance.getSelectedChain()?.rpcUrl {
             if let v = try? await Web3RPCService.maxPriorityFeePerGasHex(rpcUrl: rpcUrl) { return v }
         }
-        guard let session = AppKit.instance.getSessions().first,
+        guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let chain = AppKit.instance.getSelectedChain(),
               let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
             throw CrossSDKError.walletNotConnected
@@ -286,7 +286,7 @@ public class CrossTransactionManager: ObservableObject {
         print("🔐 Params: \(raw.params)")
 
         // 세션 및 체인 정보 확보
-        guard let session = AppKit.instance.getSessions().first,
+        guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let chain = AppKit.instance.getSelectedChain(),
               let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
             throw CrossSigningError.invalidRequest

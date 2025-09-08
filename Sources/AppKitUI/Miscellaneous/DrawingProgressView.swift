@@ -1,4 +1,6 @@
 import SwiftUI
+
+#if canImport(UIKit)
 import UIKit
 
 public struct DrawingProgressView: UIViewRepresentable {
@@ -449,3 +451,63 @@ private extension LayerPersistentHelper {
         layer.pauseAnimations()
     }
 }
+
+#else
+// macOS/AppKit version - simplified stub implementation
+import AppKit
+
+public struct DrawingProgressView: NSViewRepresentable {
+    var shape: DrawingProgressUIView.ShapePath
+    var color: NSColor
+    var lineWidth: CGFloat
+    var duration: Double
+
+    @Binding var isAnimating: Bool
+
+    public init(
+        shape: DrawingProgressUIView.ShapePath,
+        color: NSColor,
+        lineWidth: CGFloat,
+        duration: Double = 1.5,
+        isAnimating: Binding<Bool>
+    ) {
+        self.shape = shape
+        self.color = color
+        self.lineWidth = lineWidth
+        self.duration = duration
+        self._isAnimating = isAnimating
+    }
+
+    public func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+        return view
+    }
+
+    public func updateNSView(_ nsView: NSView, context: Context) {
+        // Simplified implementation for macOS
+    }
+}
+
+public class DrawingProgressUIView: NSView {
+    public enum ShapePath {
+        case circle
+        case roundedRectangleRelative(relativeCornerRadius: Double)
+        case roundedRectangleAbsolute(cornerRadius: Double)
+        case hexagon
+    }
+
+    var isAnimating: Bool = false
+
+    convenience init(
+        shape: ShapePath,
+        colors: [NSColor],
+        lineWidth: CGFloat,
+        duration: Double
+    ) {
+        self.init(frame: .zero)
+    }
+}
+
+#endif

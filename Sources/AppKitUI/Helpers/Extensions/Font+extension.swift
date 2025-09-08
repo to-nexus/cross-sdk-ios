@@ -68,8 +68,13 @@ struct ScaledFont: ViewModifier {
     var weight: Font.Weight
 
     func body(content: Content) -> some View {
+#if canImport(UIKit)
         let scaledSize = UIFontMetrics.default.scaledValue(for: size)
         return content.font(.system(size: scaledSize, weight: weight))
+#else
+        // macOS fallback - use size directly
+        return content.font(.system(size: size, weight: weight))
+#endif
     }
 }
 

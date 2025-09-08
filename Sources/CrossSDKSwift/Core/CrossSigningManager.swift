@@ -131,7 +131,7 @@ public class CrossSigningManager: ObservableObject {
         print("🔐 Params: \(raw.params)")
 
         // 세션 및 체인 정보 확보
-        guard let session = AppKit.instance.getSessions().first,
+        guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let chain = AppKit.instance.getSelectedChain(),
               let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
             throw CrossSigningError.invalidRequest
@@ -323,12 +323,5 @@ public enum CrossSigningError: LocalizedError {
         case .invalidRequest:
             return "잘못된 요청입니다."
         }
-    }
-}
-
-// Data extension for hex conversion
-extension Data {
-    func toHexString() -> String {
-        return map { String(format: "%02hhx", $0) }.joined()
     }
 }

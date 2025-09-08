@@ -59,8 +59,22 @@ public extension ShapeStyle where Self == Color {
     static var GrayGlass020: Color { Color(#function, bundle: .module) }
 }
 
+#if canImport(UIKit)
+import UIKit
+
 public extension UIColor {
     static var Blue100: UIColor { UIColor(named: #function, in: .module, compatibleWith: nil) ?? .blue }
     static var Background125: UIColor { UIColor(named: #function, in: .module, compatibleWith: nil) ?? .blue }
     static var Foreground100: UIColor { UIColor(named: #function, in: .module, compatibleWith: nil) ?? .blue }
 }
+
+#else
+import AppKit
+
+public extension NSColor {
+    static var Blue100: NSColor { NSColor(named: #function, bundle: .module) ?? .blue }
+    static var Background125: NSColor { NSColor(named: #function, bundle: .module) ?? .blue }
+    static var Foreground100: NSColor { NSColor(named: #function, bundle: .module) ?? .blue }
+}
+
+#endif

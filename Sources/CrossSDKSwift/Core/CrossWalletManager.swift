@@ -85,7 +85,7 @@ public class CrossWalletManager: ObservableObject {
 
     /// 지갑 연결 해제
     public func disconnectWallet() async throws {
-        guard let session = AppKit.instance.getSessions().first else {
+        guard let session = CrossSDKSwift.shared.getCurrentSession() else {
             updateConnectionState(.disconnected)
             return
         }
@@ -234,7 +234,7 @@ public class CrossWalletManager: ObservableObject {
         print("🔍 CrossWalletManager: Checking for existing sessions")
         
         // AppKit에서 활성 세션 확인
-        let sessions = AppKit.instance.getSessions()
+        let sessions = CrossSDKSwift.shared.getSessions()
         print("📊 CrossWalletManager: Found \(sessions.count) active sessions")
         
         if let session = sessions.first {

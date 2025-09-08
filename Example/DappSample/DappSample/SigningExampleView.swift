@@ -1,9 +1,5 @@
 import SwiftUI
 import CrossSDKSwift
-import CrossAppKit
-import WalletConnectSign
-import WalletConnectSigner
-import WalletConnectUtils
 
 struct SigningExampleView: View {
     @State private var selectedSigningType: CrossSigningType = .personalSign
@@ -12,6 +8,7 @@ struct SigningExampleView: View {
     @State private var signatureResult: CrossSigningResult?
     @State private var recoveredAddress: String?
     @State private var verificationOK: Bool = false
+    @State private var lastSignedMessage: String = "" // 마지막으로 서명한 원본 메시지 저장
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showResult = false
@@ -53,7 +50,8 @@ struct SigningExampleView: View {
                     SignatureResultView(
                         result: result,
                         recoveredAddress: recoveredAddress,
-                        verificationOK: verificationOK
+                        verificationOK: verificationOK,
+                        lastSignedMessage: lastSignedMessage
                     )
                 }
             }
@@ -296,6 +294,8 @@ struct SigningExampleView: View {
 
             switch selectedSigningType {
             case .personalSign:
+                // 원본 메시지 저장
+                lastSignedMessage = messageToSign
                 result = try await CrossSDKSwift.shared.personalSign(
                     message: messageToSign,
                     customData: CustomData(
@@ -308,7 +308,7 @@ struct SigningExampleView: View {
 
             case .ethSign:
                 let cleanHex = customData.hasPrefix("0x") ? String(customData.dropFirst(2)) : customData
-                let data = Data(hex: cleanHex)
+                let data = CrossSDKSwift.shared.utils.hexToData( cleanHex)
                 result = try await CrossSDKSwift.shared.ethSign(
                     data: data,
                     customData: CustomData(string: "ETH Sign sample metadata")
@@ -440,90 +440,115 @@ struct SigningExampleView: View {
     // MARK: - Signature verification (address recovery)
     @MainActor
     private func verifySignature(_ result: CrossSigningResult) async {
-        do {
-            let sigData = Data(hex: result.signature.replacingOccurrences(of: "0x", with: ""))
+        let (method, params) = result.request.rawValues
+        let utils = CrossSDKSwift.shared.utils
 
-            let crypto = DefaultCryptoProvider()
-            let sig = EthereumSignature(serialized: sigData)
+        print("🔧 Utils: Using CrossSDKSwift.shared.utils for signature verification")
 
-            let messageData: Data
-            let (method, params) = result.request.rawValues
-
-            switch method {
-            case "personal_sign":
-                // params[0] is hex message, params[1] is address
-                guard let hexMessage = params[0] as? String else {
-                    self.recoveredAddress = nil
-                    self.verificationOK = false
-                    return
-                }
-                let cleanHex = hexMessage.replacingOccurrences(of: "0x", with: "")
-                let hexData = Data(hex: cleanHex)
-                messageData = hexData.prefixed
-
-            case "eth_sign":
-                // params[0] is address, params[1] is data
-                guard let dataHex = params[1] as? String else {
-                    self.recoveredAddress = nil
-                    self.verificationOK = false
-                    return
-                }
-                let cleanHex = dataHex.replacingOccurrences(of: "0x", with: "")
-                messageData = Data(hex: cleanHex)
-
-            case "eth_signTypedData_v4":
-                // EIP-712 v4 해시를 계산하여 복구 시도
-                guard let typed = fetchedTypedData else {
-                    self.recoveredAddress = nil
-                    self.verificationOK = false
-                    return
-                }
-                guard let digest = try? EIP712LocalHasher.keccakTypedData(typed) else {
-                    self.recoveredAddress = nil
-                    self.verificationOK = false
-                    return
-                }
-                let pubKey = try crypto.recoverPubKey(signature: sig, message: digest)
-                let addrData = crypto.keccak256(pubKey).suffix(20)
-                let checksum = EIP55(crypto: crypto).encode(addrData)
-                self.recoveredAddress = checksum
-
-                // Get address from params or connected wallet
-                let expectedAddress: String
-                if let addressFromParams = params.first as? [String: Any],
-                   let address = addressFromParams["address"] as? String {
-                    expectedAddress = address
-                } else {
-                    expectedAddress = CrossSDKSwift.shared.connectedWallet?.address ?? ""
-                }
-                self.verificationOK = checksum.lowercased() == expectedAddress.lowercased()
-                return
-
-            default:
-                self.recoveredAddress = nil
-                self.verificationOK = false
-                return
-            }
-
-            let pubKey = try crypto.recoverPubKey(signature: sig, message: messageData)
-            let addrData = crypto.keccak256(pubKey).suffix(20)
-            let checksum = EIP55(crypto: crypto).encode(addrData)
-            self.recoveredAddress = checksum
-
-            // 비교 계정: params에서 주소 추출 또는 현재 지갑 주소
-            let expectedAddress: String
-            if method == "personal_sign", let address = params[1] as? String {
-                expectedAddress = address
-            } else if method == "eth_sign", let address = params[0] as? String {
-                expectedAddress = address
+        // 예상 주소 추출
+        let expectedAddress: String
+        switch method {
+        case "personal_sign":
+            expectedAddress = (params[1] as? String) ?? ""
+        case "eth_sign":
+            expectedAddress = (params[0] as? String) ?? ""
+        case "eth_signTypedData_v4":
+            if let paramsDict = params.first as? [String: Any],
+               let addr = paramsDict["address"] as? String {
+                expectedAddress = addr
             } else {
                 expectedAddress = CrossSDKSwift.shared.connectedWallet?.address ?? ""
             }
-            self.verificationOK = checksum.lowercased() == expectedAddress.lowercased()
-        } catch {
-            self.recoveredAddress = nil
-            self.verificationOK = false
+        default:
+            expectedAddress = CrossSDKSwift.shared.connectedWallet?.address ?? ""
         }
+
+        // 서명 검증
+        let isValid: Bool
+        var recoveredAddr: String?
+
+        switch method {
+        case "personal_sign":
+            // 저장된 원본 메시지 사용 (hex 변환 과정에서 손실 방지)
+            if !lastSignedMessage.isEmpty {
+                print("🔍 Using saved original message: '\(lastSignedMessage)'")
+                isValid = utils.verifyPersonalSign(
+                    signature: result.signature,
+                    message: lastSignedMessage,
+                    expectedAddress: expectedAddress
+                )
+                recoveredAddr = utils.recoverAddress(
+                    signature: result.signature,
+                    message: lastSignedMessage,
+                    signType: .personalSign
+                )
+            } else {
+                // 폴백: hex에서 복원 시도
+                if let hexMessage = params[0] as? String {
+                    let cleanHex = hexMessage.replacingOccurrences(of: "0x", with: "")
+                    if let originalMessage = utils.hexToString(cleanHex) {
+                        print("🔍 Using hex-decoded message: '\(originalMessage)'")
+                        isValid = utils.verifyPersonalSign(
+                            signature: result.signature,
+                            message: originalMessage,
+                            expectedAddress: expectedAddress
+                        )
+                        recoveredAddr = utils.recoverAddress(
+                            signature: result.signature,
+                            message: originalMessage,
+                            signType: .personalSign
+                        )
+                    } else {
+                        isValid = false
+                        recoveredAddr = nil
+                    }
+                } else {
+                    isValid = false
+                    recoveredAddr = nil
+                }
+            }
+
+        case "eth_sign":
+            if let dataHex = params[1] as? String {
+                let data = utils.hexToData(dataHex.replacingOccurrences(of: "0x", with: ""))
+                isValid = utils.verifyEthSign(
+                    signature: result.signature,
+                    data: data,
+                    expectedAddress: expectedAddress
+                )
+                recoveredAddr = utils.recoverAddress(
+                    signature: result.signature,
+                    message: dataHex,
+                    signType: .ethSign
+                )
+            } else {
+                isValid = false
+                recoveredAddr = nil
+            }
+
+        case "eth_signTypedData_v4":
+            if let typed = fetchedTypedData {
+                isValid = utils.verifyTypedDataV4(
+                    signature: result.signature,
+                    typedData: typed,
+                    expectedAddress: expectedAddress
+                )
+                recoveredAddr = utils.recoverAddressFromTypedData(
+                    signature: result.signature,
+                    typedData: typed
+                )
+            } else {
+                isValid = false
+                recoveredAddr = nil
+            }
+
+        default:
+            isValid = false
+            recoveredAddr = nil
+        }
+
+        self.recoveredAddress = recoveredAddr
+        self.verificationOK = isValid
     }
 
     // MARK: - Sanitize helpers
@@ -542,7 +567,7 @@ struct SigningExampleView: View {
         print("🔍 === 세션 디버깅 정보 ===")
 
         // AppKit 세션 확인
-        let sessions = AppKit.instance.getSessions()
+        let sessions = CrossSDKSwift.shared.getSessions()
         print("🔍 AppKit 세션 개수: \(sessions.count)")
 
         if let session = sessions.first {
@@ -564,7 +589,7 @@ struct SigningExampleView: View {
                     print("🔍 현재 체인: \(currentChain.name) (\(currentChain.rawValue))")
 
                     // 현재 체인에 대한 권한 확인
-                    if let blockchain = Blockchain(namespace: "eip155", reference: currentChain.rawValue) {
+                    if let blockchain = currentChain.blockchain {
                         // 수동으로 권한 확인
                         let hasAccount = eip155Namespace.accounts.contains { $0.blockchain == blockchain }
                         let hasEthSignMethod = eip155Namespace.methods.contains("eth_sign")
@@ -590,16 +615,7 @@ struct SigningExampleView: View {
     }
 }
 
-private enum EIP712LocalHasher {
-    // Builds EIP-712 struct hash and final digest per EIP-712
-    static func keccakTypedData(_ data: EIP712TypedData) throws -> Data {
-        // JSONEncoder를 사용해 안전하게 직렬화 (AnyCodable 커버됨) 후 Keccak-256
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let encoded = try encoder.encode(data)
-        return DefaultCryptoProvider().keccak256(encoded)
-    }
-}
+// EIP712LocalHasher 제거됨 - CrossSDKSwift.shared.utils.hashTypedData 사용
 
 struct SigningTypeCard: View {
     let signingType: CrossSigningType
@@ -643,6 +659,7 @@ struct SignatureResultView: View {
     let result: CrossSigningResult
     let recoveredAddress: String?
     let verificationOK: Bool
+    let lastSignedMessage: String // 원본 메시지 추가
     @State private var localRecovered: String?
     @State private var localVerificationOK: Bool = false
     @Environment(\.dismiss) private var dismiss
@@ -687,7 +704,7 @@ struct SignatureResultView: View {
         case "personal_sign":
             if let hexMessage = params[0] as? String {
                 let cleanHex = hexMessage.replacingOccurrences(of: "0x", with: "")
-                let data = Data(hex: cleanHex)
+                let data = CrossSDKSwift.shared.utils.hexToData(cleanHex)
                 if let originalMessage = String(data: data, encoding: .utf8) {
                     messageText = originalMessage
                 } else {
@@ -780,51 +797,69 @@ struct SignatureResultView: View {
 
     @MainActor
     private func computeRecovery() async {
-        do {
-            let sigData = Data(hex: result.signature.replacingOccurrences(of: "0x", with: ""))
-            let crypto = DefaultCryptoProvider()
-            let sig = EthereumSignature(serialized: sigData)
+        let (method, params) = result.request.rawValues
+        let utils = CrossSDKSwift.shared.utils
 
-            let messageData: Data
-            let (method, params) = result.request.rawValues
+        // 예상 주소 추출
+        let expectedAddress: String
+        switch method {
+        case "personal_sign":
+            expectedAddress = (params[1] as? String) ?? ""
+        case "eth_sign":
+            expectedAddress = (params[0] as? String) ?? ""
+        default:
+            expectedAddress = CrossSDKSwift.shared.connectedWallet?.address ?? ""
+        }
 
-            switch method {
-            case "personal_sign":
-                // params[0] is hex message, params[1] is address
-                guard let hexMessage = params[0] as? String else { return }
-                let cleanHex = hexMessage.replacingOccurrences(of: "0x", with: "")
-                let hexData = Data(hex: cleanHex)
-                messageData = hexData.prefixed
-
-            case "eth_sign":
-                // params[0] is address, params[1] is data
-                guard let dataHex = params[1] as? String else { return }
-                let cleanHex = dataHex.replacingOccurrences(of: "0x", with: "")
-                messageData = Data(hex: cleanHex)
-
-            case "eth_signTypedData_v4":
-                return
-
-            default:
-                return
-            }
-
-            let pubKey = try crypto.recoverPubKey(signature: sig, message: messageData)
-            let addrData = crypto.keccak256(pubKey).suffix(20)
-            let checksum = EIP55(crypto: crypto).encode(addrData)
-            self.localRecovered = checksum
-            // 비교 계정: params에서 주소 추출
-            let expectedAddress: String
-            if method == "personal_sign", let address = params[1] as? String {
-                expectedAddress = address
-            } else if method == "eth_sign", let address = params[0] as? String {
-                expectedAddress = address
+        // 주소 복구
+        let recoveredAddr: String?
+        switch method {
+        case "personal_sign":
+            // 저장된 원본 메시지 사용
+            if !lastSignedMessage.isEmpty {
+                recoveredAddr = utils.recoverAddress(
+                    signature: result.signature,
+                    message: lastSignedMessage,
+                    signType: .personalSign
+                )
             } else {
-                expectedAddress = CrossSDKSwift.shared.connectedWallet?.address ?? ""
+                // 폴백: hex에서 복원 시도
+                if let hexMessage = params[0] as? String,
+                   let originalMessage = utils.hexToString(hexMessage.replacingOccurrences(of: "0x", with: "")) {
+                    recoveredAddr = utils.recoverAddress(
+                        signature: result.signature,
+                        message: originalMessage,
+                        signType: .personalSign
+                    )
+                } else {
+                    recoveredAddr = nil
+                }
             }
-            self.localVerificationOK = checksum.lowercased() == expectedAddress.lowercased()
-        } catch {
-            // ignore
+
+        case "eth_sign":
+            if let dataHex = params[1] as? String {
+                recoveredAddr = utils.recoverAddress(
+                    signature: result.signature,
+                    message: dataHex,
+                    signType: .ethSign
+                )
+            } else {
+                recoveredAddr = nil
+            }
+
+        case "eth_signTypedData_v4":
+            // TypedData는 별도 처리 필요 - 현재는 스킵
+            recoveredAddr = nil
+
+        default:
+            recoveredAddr = nil
+        }
+
+        self.localRecovered = recoveredAddr
+        if let recovered = recoveredAddr {
+            self.localVerificationOK = recovered.lowercased() == expectedAddress.lowercased()
+        } else {
+            self.localVerificationOK = false
         }
     }
 }

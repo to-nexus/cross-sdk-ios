@@ -208,7 +208,7 @@ public class CrossChainManager: ObservableObject {
 
         let chainHex = String(format: "%X", chainIdNumber)
 
-        guard let session = AppKit.instance.getSessions().first else {
+        guard let session = CrossSDKSwift.shared.getCurrentSession() else {
             throw CrossSDKError.walletNotConnected
         }
 

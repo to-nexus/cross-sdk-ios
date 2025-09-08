@@ -24,7 +24,7 @@ public struct CrossJSONRPCObject: Codable {
         if method == "personal_sign" {
             let address = jsonrpcParams["address"] as? String ?? ""
             let message = jsonrpcParams["message"] as? String ?? ""
-            let messageHex = "0x" + (message.data(using: .utf8)?.toHexString() ?? "")
+            let messageHex = "0x" + CrossSDKSwift.shared.utils.dataToHex(message.data(using: .utf8) ?? Data())
             paramsArray = [messageHex, address]
             if let customData = customData {
                 paramsArray.append(customData.rawValue)

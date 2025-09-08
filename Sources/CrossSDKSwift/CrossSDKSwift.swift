@@ -36,6 +36,9 @@ public final class CrossSDKSwift: ObservableObject {
     /// Advanced signing manager for different signature types
     public let signingManager = CrossSigningManager()
 
+    /// Utility functions for data conversion and formatting
+    public let utils = CrossUtils()
+
     // MARK: - Published Properties
 
     /// Current wallet connection state (기존)
@@ -631,7 +634,7 @@ public final class CrossSDKSwift: ObservableObject {
         print("🔍 CrossSDKSwift: Checking and restoring session state")
 
         // AppKit과 Sign 인스턴스 모두에서 세션 확인
-        let appKitSessions = AppKit.instance.getSessions()
+        let appKitSessions = getSessions()
         let signSessions = Sign.instance.getSessions()
 
         print("📊 CrossSDKSwift: AppKit sessions: \(appKitSessions.count)")
@@ -681,7 +684,7 @@ public final class CrossSDKSwift: ObservableObject {
         print("✅ CrossSDKSwift: Validating current session")
 
         // 현재 연결 상태가 실제 세션과 일치하는지 확인
-        let sessions = AppKit.instance.getSessions()
+        let sessions = getSessions()
         let hasValidSession = !sessions.isEmpty
 
         switch detailedConnectionState {
@@ -710,6 +713,32 @@ public final class CrossSDKSwift: ObservableObject {
             self.checkAndRestoreSessionState()
             self.refreshConnectionState()
         }
+    }
+
+    // MARK: - Session Management
+
+    /// Get all active sessions
+    /// - Returns: Array of active WalletConnect sessions
+    public func getSessions() -> [Session] {
+        return AppKit.instance.getSessions()
+    }
+
+    /// Get the current active session (first session if multiple exist)
+    /// - Returns: Current active session or nil if no session exists
+    public func getCurrentSession() -> Session? {
+        return AppKit.instance.getSessions().first
+    }
+
+    /// Check if there are any active sessions
+    /// - Returns: True if at least one session exists
+    public func hasActiveSession() -> Bool {
+        return !AppKit.instance.getSessions().isEmpty
+    }
+
+    /// Get session count
+    /// - Returns: Number of active sessions
+    public func getSessionCount() -> Int {
+        return AppKit.instance.getSessions().count
     }
 
     deinit {

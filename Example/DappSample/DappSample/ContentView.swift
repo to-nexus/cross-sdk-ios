@@ -141,8 +141,7 @@ struct ConnectionStatusView: View {
     }
 
     private func formatAddress(_ address: String) -> String {
-        guard address.count > 10 else { return address }
-        return "\(address.prefix(6))...\(address.suffix(4))"
+        return CrossSDKSwift.shared.utils.formatAddress(address)
     }
     private func getCurrentChainName() -> String {
         // 현재 선택된 체인이 있으면 그것을 우선 사용
