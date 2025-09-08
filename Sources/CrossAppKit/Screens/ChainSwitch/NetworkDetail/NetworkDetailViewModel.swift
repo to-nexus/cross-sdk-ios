@@ -162,7 +162,8 @@ final class NetworkDetailViewModel: ObservableObject {
                     )
             )
         case .cb:
-            try await AppKit.instance.request(.wallet_switchEthereumChain(chainId: to.chainReference))
+//            try await AppKit.instance.request(.wallet_switchEthereumChain(chainId: to.chainReference))
+            break
         case .none:
             break
         }
@@ -192,19 +193,20 @@ final class NetworkDetailViewModel: ObservableObject {
                 )
             )
         case .cb:
-            try await AppKit.instance.request(
-                .wallet_addEthereumChain(
-                    chainId: addChainParams.chainId,
-                    blockExplorerUrls: addChainParams.blockExplorerUrls,
-                     chainName: addChainParams.chainName,
-                     iconUrls: addChainParams.iconUrls,
-                    nativeCurrency: .init(
-                        name: addChainParams.nativeCurrency.name,
-                        symbol: addChainParams.nativeCurrency.symbol,
-                        decimals: addChainParams.nativeCurrency.decimals
-                    ),
-                     rpcUrls: addChainParams.rpcUrls
-                 ))
+//            try await AppKit.instance.request(
+//                .wallet_addEthereumChain(
+//                    chainId: addChainParams.chainId,
+//                    blockExplorerUrls: addChainParams.blockExplorerUrls,
+//                     chainName: addChainParams.chainName,
+//                     iconUrls: addChainParams.iconUrls,
+//                    nativeCurrency: .init(
+//                        name: addChainParams.nativeCurrency.name,
+//                        symbol: addChainParams.nativeCurrency.symbol,
+//                        decimals: addChainParams.nativeCurrency.decimals
+//                    ),
+//                     rpcUrls: addChainParams.rpcUrls
+//                 ))
+            break
         case .none:
             break
         }

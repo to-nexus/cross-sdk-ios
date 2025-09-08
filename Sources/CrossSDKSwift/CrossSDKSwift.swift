@@ -32,7 +32,7 @@ public final class CrossSDKSwift: ObservableObject {
 
     /// Transaction and signing manager
     public let transactionManager = CrossTransactionManager()
-    
+
     /// Advanced signing manager for different signature types
     public let signingManager = CrossSigningManager()
 
@@ -124,15 +124,15 @@ public final class CrossSDKSwift: ObservableObject {
         let sessionParams = createSessionParams(for: chains)
 
         configureNetwork(groupIdentifier: groupIdentifier, projectId: projectId)
-        
+
         configureAppKit(
             projectId: projectId,
             metadata: metadata,
             sessionParams: sessionParams
         )
-        
+
         setupEventObservers()
-        
+
         signingManager.configure()
     }
 
@@ -143,6 +143,9 @@ public final class CrossSDKSwift: ObservableObject {
         try await walletManager.connectWallet()
     }
 
+    public func appKitPresent() {
+        AppKit.present()
+    }
     /// Disconnect from wallet
     public func disconnectWallet() async throws {
         try await walletManager.disconnectWallet()
@@ -156,89 +159,68 @@ public final class CrossSDKSwift: ObservableObject {
         chainManager.switchChainImmediately(to: chain)
     }
 
-    // MARK: - Transaction & Signing
-
-    /// Sign a message
-    /// - Parameter message: Message to sign
-    /// - Returns: Signed message
-    public func signMessage(_ message: String) async throws -> String {
-        return try await transactionManager.signMessage(message)
-    }
+    // MARK: - Transaction
 
     /// Send a transaction
     /// - Parameter params: Transaction parameters
     /// - Returns: Transaction hash
-    public func sendTransaction(_ params: CrossTransactionParams) async throws -> String {
-        return try await transactionManager.sendTransaction(params)
+    public func sendTransaction(_ params: CrossTransactionParams, customData: CustomData? = nil) async throws -> String {
+        return try await transactionManager.sendTransaction(params, customData: customData)
     }
 
-    /// Sign a transaction (without sending)
-    /// - Parameter params: Transaction parameters
-    /// - Returns: Signed transaction
-    public func signTransaction(_ params: CrossTransactionParams) async throws -> String {
-        return try await transactionManager.signTransaction(params)
-    }
-
-    /// Sign typed data (EIP-712)
-    /// - Parameter data: Typed data to sign
-    /// - Returns: Signature
-    public func signTypedData(_ data: String) async throws -> String {
-        return try await transactionManager.signTypedData(data)
-    }
-    
     // MARK: - Advanced Signing Methods
-    
+
     /// Personal Sign - 사용자가 읽을 수 있는 메시지에 서명
     /// - Parameters:
     ///   - message: 서명할 메시지
     ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
     /// - Returns: 서명 결과
-    public func personalSign(message: String, account: String? = nil) async throws -> CrossSigningResult {
+    public func personalSign(message: String, account: String? = nil, customData: CustomData? = nil) async throws -> CrossSigningResult {
         let signingAccount = account ?? connectedWallet?.address ?? ""
         guard !signingAccount.isEmpty else {
             throw CrossSigningError.noActiveSession
         }
-        return try await signingManager.personalSign(message: message, account: signingAccount)
+        return try await signingManager.personalSign(message: message, account: signingAccount, customData: customData)
     }
-    
+
     /// ETH Sign - 원시 바이트 데이터에 서명 (위험할 수 있음)
     /// - Parameters:
     ///   - data: 서명할 32바이트 데이터
     ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
     /// - Returns: 서명 결과
-    public func ethSign(data: Data, account: String? = nil) async throws -> CrossSigningResult {
+    public func ethSign(data: Data, account: String? = nil, customData: CustomData? = nil) async throws -> CrossSigningResult {
         let signingAccount = account ?? connectedWallet?.address ?? ""
         guard !signingAccount.isEmpty else {
             throw CrossSigningError.noActiveSession
         }
-        return try await signingManager.ethSign(data: data, account: signingAccount)
+        return try await signingManager.ethSign(data: data, account: signingAccount, customData: customData)
     }
-    
+
     /// EIP-712 Typed Data V4 서명 - 구조화된 데이터에 서명
     /// - Parameters:
     ///   - typedData: EIP-712 구조화된 데이터
     ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
     /// - Returns: 서명 결과
-    public func signTypedDataV4(typedData: EIP712TypedData, account: String? = nil) async throws -> CrossSigningResult {
+    public func signTypedDataV4(typedData: EIP712TypedData, account: String? = nil, customData: CustomData? = nil) async throws -> CrossSigningResult {
         let signingAccount = account ?? connectedWallet?.address ?? ""
         guard !signingAccount.isEmpty else {
             throw CrossSigningError.noActiveSession
         }
-        return try await signingManager.signTypedDataV4(typedData: typedData, account: signingAccount)
+        return try await signingManager.signTypedDataV4(typedData: typedData, account: signingAccount, customData: customData)
     }
-    
+
     /// 간단한 EIP-712 메시지 서명 - 편의 메서드
     /// - Parameters:
     ///   - message: 서명할 메시지
     ///   - account: 서명할 계정 주소 (optional, 현재 연결된 계정 사용)
     ///   - domain: 도메인 정보 (optional, 기본값 사용)
     /// - Returns: 서명 결과
-    public func signSimpleMessage(message: String, account: String? = nil, domain: EIP712Domain? = nil) async throws -> CrossSigningResult {
+    public func signSimpleMessage(message: String, account: String? = nil, domain: EIP712Domain? = nil, customData: CustomData? = nil) async throws -> CrossSigningResult {
         let signingAccount = account ?? connectedWallet?.address ?? ""
         guard !signingAccount.isEmpty else {
             throw CrossSigningError.noActiveSession
         }
-        return try await signingManager.signSimpleMessage(message: message, account: signingAccount, domain: domain)
+        return try await signingManager.signSimpleMessage(message: message, account: signingAccount, domain: domain, customData: customData)
     }
 
     // MARK: - Convenience Methods
@@ -247,10 +229,11 @@ public final class CrossSDKSwift: ObservableObject {
     /// - Parameters:
     ///   - to: Recipient address
     ///   - amount: Amount in native coin units (e.g., ETH)
+    ///   - customData: Optional custom metadata to include with the request
     /// - Returns: Transaction hash
-    public func sendNative(to address: String, amount: String) async throws -> String {
+    public func sendNative(to address: String, amount: String, customData: CustomData? = nil) async throws -> String {
         let params = CrossTransactionParams(to: address, value: amount)
-        return try await sendTransaction(params)
+        return try await sendTransaction(params, customData: customData)
     }
 
     @available(*, deprecated, renamed: "sendNative(to:amount:)")
@@ -277,9 +260,9 @@ public final class CrossSDKSwift: ObservableObject {
     }
 
     private func createAppMetadata(
-        name: String, 
-        description: String, 
-        url: String, 
+        name: String,
+        description: String,
+        url: String,
         icons: [String],
         redirectNative: String,
         redirectUniversal: String
@@ -308,7 +291,7 @@ public final class CrossSDKSwift: ObservableObject {
     private func createSessionParams(for chains: [Chain]) -> SessionParams {
         return .cross
     }
-    
+
     private func configureNetwork(groupIdentifier: String, projectId: String) {
         Networking.configure(
             groupIdentifier: groupIdentifier,
@@ -334,11 +317,11 @@ public final class CrossSDKSwift: ObservableObject {
         ) { error in
             print("CrossSDKSwift configuration error: \(error)")
         }
-        
+
         // AppKit 설정 완료 후 managers 초기화
         setupManagersAfterConfiguration()
     }
-    
+
     private func setupManagersAfterConfiguration() {
         print("🔧 CrossSDKSwift: Setting up managers after AppKit configuration")
         walletManager.setupAfterAppKitConfiguration()
@@ -351,7 +334,7 @@ public final class CrossSDKSwift: ObservableObject {
 
     private func setupEventObservers() {
         print("🔧 CrossSDKSwift: Setting up event observers")
-        
+
         // CrossWalletManager의 연결 상태 변화를 관찰
         walletManager.$connectionState
             .receive(on: DispatchQueue.main)
@@ -360,7 +343,7 @@ public final class CrossSDKSwift: ObservableObject {
                 self?.handleWalletConnectionStateChange(connectionState)
             }
             .store(in: &cancellables)
-        
+
         // AppKit의 이벤트들을 직접 관찰 (CrossWalletManager와 동일한 소스 사용)
         AppKit.instance.sessionSettlePublisher
             .receive(on: DispatchQueue.main)
@@ -371,7 +354,7 @@ public final class CrossSDKSwift: ObservableObject {
                 self?.handleSessionSettled(session)
             }
             .store(in: &cancellables)
-        
+
         // Sign.instance도 직접 관찰 (추가 디버깅)
         Sign.instance.sessionSettlePublisher
             .receive(on: DispatchQueue.main)
@@ -382,7 +365,7 @@ public final class CrossSDKSwift: ObservableObject {
                 self?.handleSessionSettled(session)
             }
             .store(in: &cancellables)
-        
+
         AppKit.instance.sessionDeletePublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] (topic, reason) in
@@ -390,7 +373,7 @@ public final class CrossSDKSwift: ObservableObject {
                 self?.handleSessionDeleted(reason: reason.message)
             }
             .store(in: &cancellables)
-        
+
         // Sign의 인증 관련 이벤트들
         Sign.instance.authResponsePublisher
             .receive(on: DispatchQueue.main)
@@ -398,14 +381,14 @@ public final class CrossSDKSwift: ObservableObject {
                 self?.handleAuthResponse(response.result)
             }
             .store(in: &cancellables)
-        
+
         Sign.instance.requestExpirationPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.handleRequestExpired()
             }
             .store(in: &cancellables)
-        
+
         // 세션 업데이트 감지 (디버깅용)
         Sign.instance.sessionsPublisher
             .receive(on: DispatchQueue.main)
@@ -417,7 +400,7 @@ public final class CrossSDKSwift: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-        
+
         // 세션 응답 이벤트 관찰 (디버깅용)
         Sign.instance.sessionResponsePublisher
             .receive(on: DispatchQueue.main)
@@ -427,7 +410,7 @@ public final class CrossSDKSwift: ObservableObject {
                 print("📨 CrossSDKSwift: Response result: \(response.result)")
             }
             .store(in: &cancellables)
-        
+
         // 소켓 연결 상태 관찰 (디버깅용)
         Sign.instance.socketConnectionStatusPublisher
             .receive(on: DispatchQueue.main)
@@ -435,7 +418,7 @@ public final class CrossSDKSwift: ObservableObject {
                 print("🔌 CrossSDKSwift: Socket connection status: \(status)")
             }
             .store(in: &cancellables)
-        
+
         // 세션 제안 응답 관찰 (디버깅용)
         Sign.instance.sessionProposalPublisher
             .receive(on: DispatchQueue.main)
@@ -445,7 +428,7 @@ public final class CrossSDKSwift: ObservableObject {
                 print("📋 CrossSDKSwift: Proposer: \(proposal.proposer.name)")
             }
             .store(in: &cancellables)
-        
+
         // 세션 거부 이벤트 관찰 (디버깅용)
         Sign.instance.sessionRejectionPublisher
             .receive(on: DispatchQueue.main)
@@ -456,10 +439,10 @@ public final class CrossSDKSwift: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     private func handleWalletConnectionStateChange(_ connectionState: CrossWalletConnectionState) {
         print("🔄 CrossSDKSwift: Handling wallet connection state change: \(connectionState)")
-        
+
         // CrossWalletManager의 상태를 CrossConnectionState로 변환
         switch connectionState {
         case .disconnected:
@@ -479,7 +462,7 @@ public final class CrossSDKSwift: ObservableObject {
             publishEvent(.authenticationFailed(error))
         }
     }
-    
+
     private func handleSessionSettled(_ session: Session) {
         // 기존 로직 + 이벤트 발행
         guard let wallet = createWalletFromSession(session) else {
@@ -488,20 +471,20 @@ public final class CrossSDKSwift: ObservableObject {
             publishEvent(.authenticationFailed(error))
             return
         }
-        
+
         updateDetailedConnectionState(.connected(wallet))
         publishEvent(.sessionSettled(wallet))
     }
-    
+
     private func handleSessionDeleted(reason: String) {
         updateDetailedConnectionState(.disconnected)
         publishEvent(.sessionDeleted(reason))
     }
-    
+
     private func handleAuthResponse(_ result: Any) {
         // Mirror를 사용해서 Result 타입을 안전하게 처리
         let mirror = Mirror(reflecting: result)
-        
+
         // Result의 success case 확인
         if let successCase = mirror.children.first(where: { $0.label == "success" }) {
             if let tuple = successCase.value as? (Session?, Any) {
@@ -518,45 +501,45 @@ public final class CrossSDKSwift: ObservableObject {
             publishEvent(.authenticationFailed(error))
         }
     }
-    
+
     private func handleRequestExpired() {
         let error = CrossSDKError.requestExpired
         updateDetailedConnectionState(.error(error))
         publishEvent(.requestExpired)
     }
-    
+
     private func updateDetailedConnectionState(_ newState: CrossConnectionState) {
         print("🔄 CrossSDKSwift: Updating detailed connection state to: \(newState)")
         detailedConnectionState = newState
         stateChangePublisher.send(newState)
     }
-    
+
     private func publishEvent(_ event: CrossConnectionEvent) {
         print("📡 CrossSDKSwift: Publishing event: \(event)")
         lastEvent = event
         connectionEventPublisher.send(event)
     }
-    
+
     private func createWalletFromSession(_ session: Session) -> CrossWallet? {
         guard let account = session.namespaces.values.first?.accounts.first else {
             return nil
         }
-        
+
         let address = account.address
         let chainId = account.blockchain.reference
-        
+
         guard let chain = CrossChain(rawValue: chainId) else {
             return nil
         }
-        
+
         return CrossWallet(address: address, chain: chain)
     }
-    
+
     // MARK: - 앱 라이프사이클 관리
-    
+
     private func setupAppLifecycleObservers() {
         print("🔧 CrossSDKSwift: Setting up app lifecycle observers")
-        
+
         #if canImport(UIKit)
         // iOS/tvOS 앱 라이프사이클 관찰
         NotificationCenter.default.addObserver(
@@ -566,7 +549,7 @@ public final class CrossSDKSwift: ObservableObject {
         ) { [weak self] _ in
             self?.handleAppWillEnterForeground()
         }
-        
+
         NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification,
             object: nil,
@@ -574,7 +557,7 @@ public final class CrossSDKSwift: ObservableObject {
         ) { [weak self] _ in
             self?.handleAppDidBecomeActive()
         }
-        
+
         NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
@@ -582,7 +565,7 @@ public final class CrossSDKSwift: ObservableObject {
         ) { [weak self] _ in
             self?.handleAppDidEnterBackground()
         }
-        
+
         #elseif canImport(AppKit)
         // macOS 앱 라이프사이클 관찰
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -592,7 +575,7 @@ public final class CrossSDKSwift: ObservableObject {
         ) { [weak self] _ in
             self?.handleAppDidWake()
         }
-        
+
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.willSleepNotification,
             object: nil,
@@ -602,62 +585,62 @@ public final class CrossSDKSwift: ObservableObject {
         }
         #endif
     }
-    
+
     // MARK: - 앱 라이프사이클 이벤트 핸들러
-    
+
     private func handleAppWillEnterForeground() {
         print("🌅 CrossSDKSwift: App will enter foreground")
-        
+
         // 포그라운드로 올라올 때 세션 상태 확인
         checkAndRestoreSessionState()
-        
+
         // 연결 상태 재확인
         refreshConnectionState()
     }
-    
+
     private func handleAppDidBecomeActive() {
         print("✨ CrossSDKSwift: App did become active")
-        
+
         // 앱이 활성화될 때 추가 처리
         validateCurrentSession()
     }
-    
+
     private func handleAppDidEnterBackground() {
         print("🌙 CrossSDKSwift: App did enter background")
-        
+
         // 백그라운드로 갈 때 필요한 정리 작업
     }
-    
+
     private func handleAppDidWake() {
         print("🌅 CrossSDKSwift: Mac did wake from sleep")
-        
+
         // macOS에서 슬립에서 깨어날 때
         checkAndRestoreSessionState()
         refreshConnectionState()
     }
-    
+
     private func handleAppWillSleep() {
         print("😴 CrossSDKSwift: Mac will sleep")
-        
+
         // macOS에서 슬립 모드로 들어갈 때
     }
-    
+
     // MARK: - 세션 상태 관리 헬퍼 메서드들
-    
+
     private func checkAndRestoreSessionState() {
         print("🔍 CrossSDKSwift: Checking and restoring session state")
-        
+
         // AppKit과 Sign 인스턴스 모두에서 세션 확인
         let appKitSessions = AppKit.instance.getSessions()
         let signSessions = Sign.instance.getSessions()
-        
+
         print("📊 CrossSDKSwift: AppKit sessions: \(appKitSessions.count)")
         print("📊 CrossSDKSwift: Sign sessions: \(signSessions.count)")
-        
+
         // Sign 인스턴스에서 세션 찾기 (더 최신 상태일 가능성)
         if let session = signSessions.first {
             print("✅ CrossSDKSwift: Restoring session from Sign instance: \(session.topic)")
-            
+
             // 세션에서 지갑 정보 추출
             if let wallet = createWalletFromSession(session) {
                 print("👛 CrossSDKSwift: Restored wallet: \(wallet.address)")
@@ -666,11 +649,11 @@ public final class CrossSDKSwift: ObservableObject {
                 return
             }
         }
-        
+
         // AppKit에서 세션 찾기
         if let session = appKitSessions.first {
             print("✅ CrossSDKSwift: Restoring session from AppKit: \(session.topic)")
-            
+
             // 세션에서 지갑 정보 추출
             if let wallet = createWalletFromSession(session) {
                 print("👛 CrossSDKSwift: Restored wallet: \(wallet.address)")
@@ -679,28 +662,28 @@ public final class CrossSDKSwift: ObservableObject {
                 return
             }
         }
-        
+
         print("❌ CrossSDKSwift: No sessions found, setting to disconnected")
         updateDetailedConnectionState(.disconnected)
     }
-    
+
     private func refreshConnectionState() {
         print("🔄 CrossSDKSwift: Refreshing connection state")
-        
+
         // WalletManager의 현재 상태와 동기화
         let currentState = walletManager.connectionState
         print("📱 CrossSDKSwift: Current WalletManager state: \(currentState)")
-        
+
         handleWalletConnectionStateChange(currentState)
     }
-    
+
     private func validateCurrentSession() {
         print("✅ CrossSDKSwift: Validating current session")
-        
+
         // 현재 연결 상태가 실제 세션과 일치하는지 확인
         let sessions = AppKit.instance.getSessions()
         let hasValidSession = !sessions.isEmpty
-        
+
         switch detailedConnectionState {
         case .connected:
             if !hasValidSession {
@@ -717,18 +700,18 @@ public final class CrossSDKSwift: ObservableObject {
             break
         }
     }
-    
+
     // MARK: - 수동 세션 상태 새로고침 (디버깅용)
-    
+
     public func forceRefreshSessionState() {
         print("🔄 CrossSDKSwift: Force refreshing session state...")
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.checkAndRestoreSessionState()
             self.refreshConnectionState()
         }
     }
-    
+
     deinit {
         // NotificationCenter observer 정리는 ARC가 자동으로 처리
         print("🗑️ CrossSDKSwift: Deinitializing")

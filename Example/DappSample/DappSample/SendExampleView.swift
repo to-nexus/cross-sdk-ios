@@ -5,7 +5,7 @@ struct SendExampleView: View {
     @ObservedObject private var sdk = CrossSDKSwift.shared
 
     @State private var selectedTab: SendTab = .native
-    @State private var receiverAddress: String = ""
+    @State private var receiverAddress: String = "0x9e68897612dD9A78F8371a2a2e7395Ec8445F6Df"
     @State private var amountText: String = ""
 
     @State private var isLoading: Bool = false
@@ -24,6 +24,7 @@ struct SendExampleView: View {
                 }
                 .padding()
             }
+            .dismissKeyboardOnInteract()
             .navigationTitle("전송 예제")
             .alert("오류", isPresented: .constant(errorMessage != nil)) {
                 Button("확인") { errorMessage = nil }
@@ -191,7 +192,6 @@ struct SendExampleView: View {
     }
 
     private func performSend() {
-        dismissKeyboard()
         Task { await send() }
     }
 
@@ -204,7 +204,16 @@ struct SendExampleView: View {
         do {
             switch selectedTab {
             case .native:
-                let tx = try await sdk.sendNative(to: receiverAddress, amount: amountText)
+                let tx = try await sdk.sendNative(
+                    to: receiverAddress,
+                    amount: amountText,
+                    customData: CustomData(
+                        string: "You are about to send native token.",
+                        additional: [
+                            "timestamp": ISO8601DateFormatter().string(from: Date())
+                        ]
+                    )
+                )
                 txHash = tx
             case .erc20:
                 guard let contract = currentERC20Contract() else {
@@ -212,7 +221,17 @@ struct SendExampleView: View {
                 }
                 let data = try encodeERC20TransferData(to: receiverAddress, amount: amountText, decimals: 18)
                 let params = CrossTransactionParams(to: contract, value: "0", data: data)
-                let tx = try await sdk.sendTransaction(params)
+                let tx = try await sdk.sendTransaction(
+                    params,
+                    customData: CustomData(
+                        object: [
+                            "activity": "You are about to send custom transaction to the contract.",
+                            "currentFormat": "This is a JSON formatted custom data.",
+                            "providedFormat": "Plain text(string), HTML(string), JSON(key value object) are supported.",
+                            "txTime": ISO8601DateFormatter().string(from: Date())
+                        ]
+                    )
+                )
                 txHash = tx
             }
         } catch {
@@ -352,11 +371,6 @@ private func decimalStringToHex(_ decimal: String) -> String {
         number = q
     }
 
-#if canImport(UIKit)
-    private func dismissKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-#endif
     return String(hex.reversed())
 }
 
@@ -374,3 +388,24 @@ private func divideDecimalStringBy16(_ decimal: String) -> (quotient: String, re
     if quotient.isEmpty { quotient = "0" }
     return (quotient, carry)
 }
+
+#if canImport(UIKit)
+import UIKit
+extension View {
+    @ViewBuilder
+    func dismissKeyboardOnScroll() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollDismissesKeyboard(.interactively)
+        } else {
+            self.gesture(DragGesture().onChanged { _ in
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            })
+        }
+    }
+}
+#else
+extension View {
+    @ViewBuilder
+    func dismissKeyboardOnScroll() -> some View { self }
+}
+#endif

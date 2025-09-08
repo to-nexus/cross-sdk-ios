@@ -1,11 +1,12 @@
 import Foundation
+import Commons
 
 /// CrossSDKSwift에서 지원하는 서명 타입들
 public enum CrossSigningType: String, CaseIterable {
     case personalSign = "personal_sign"
     case ethSign = "eth_sign"
     case ethSignTypedDataV4 = "eth_signTypedData_v4"
-    
+
     /// 서명 타입의 표시용 이름
     public var displayName: String {
         switch self {
@@ -17,7 +18,7 @@ public enum CrossSigningType: String, CaseIterable {
             return "EIP-712 Typed Data V4"
         }
     }
-    
+
     /// 서명 타입의 설명
     public var description: String {
         switch self {
@@ -29,35 +30,20 @@ public enum CrossSigningType: String, CaseIterable {
             return "구조화된 데이터에 서명합니다. (EIP-712 표준)"
         }
     }
-    
+
     /// 서명 방법 (WalletConnect RPC method)
     public var rpcMethod: String {
         return self.rawValue
     }
 }
 
-/// 서명 요청 데이터
-public struct CrossSigningRequest {
-    public let type: CrossSigningType
-    public let account: String
-    public let message: String
-    public let rawData: Data?
-    
-    public init(type: CrossSigningType, account: String, message: String, rawData: Data? = nil) {
-        self.type = type
-        self.account = account
-        self.message = message
-        self.rawData = rawData
-    }
-}
-
 /// 서명 결과
 public struct CrossSigningResult {
     public let signature: String
-    public let request: CrossSigningRequest
+    public let request: CrossJSONRPCObject
     public let timestamp: Date
-    
-    public init(signature: String, request: CrossSigningRequest) {
+
+    public init(signature: String, request: CrossJSONRPCObject) {
         self.signature = signature
         self.request = request
         self.timestamp = Date()
@@ -69,42 +55,46 @@ public struct EIP712TypedData: Codable {
     public let types: [String: [EIP712Type]]
     public let primaryType: String
     public let domain: EIP712Domain
-    public let message: [String: Any]
-    
-    public init(types: [String: [EIP712Type]], primaryType: String, domain: EIP712Domain, message: [String: Any]) {
+    public let message: [String: AnyCodable]
+
+    public init(
+        types: [String: [EIP712Type]],
+        primaryType: String,
+        domain: EIP712Domain,
+        message: [String: AnyCodable]
+    ) {
         self.types = types
         self.primaryType = primaryType
         self.domain = domain
         self.message = message
     }
-    
-    enum CodingKeys: String, CodingKey {
-        case types, primaryType, domain, message
+
+    /// Convenience initializer for callers that have a [String: Any]
+    public init(
+        types: [String: [EIP712Type]],
+        primaryType: String,
+        domain: EIP712Domain,
+        message: [String: Any]
+    ) {
+        self.init(
+            types: types,
+            primaryType: primaryType,
+            domain: domain,
+            message: message.mapValues { AnyCodable(any: $0) }
+        )
     }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(types, forKey: .types)
-        try container.encode(primaryType, forKey: .primaryType)
-        try container.encode(domain, forKey: .domain)
-        
-        // message는 [String: Any]이므로 특별한 처리가 필요
-        let messageData = try JSONSerialization.data(withJSONObject: message)
-        let messageJson = try JSONSerialization.jsonObject(with: messageData) as! [String: Any]
-        try container.encode(AnyCodable(messageJson), forKey: .message)
-    }
-    
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        types = try container.decode([String: [EIP712Type]].self, forKey: .types)
-        primaryType = try container.decode(String.self, forKey: .primaryType)
-        domain = try container.decode(EIP712Domain.self, forKey: .domain)
-        
-        let anyCodableMessage = try container.decode(AnyCodable.self, forKey: .message)
-        guard let messageDict = anyCodableMessage.value as? [String: Any] else {
-            throw DecodingError.typeMismatch([String: Any].self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Expected dictionary"))
-        }
-        message = messageDict
+}
+
+public extension EIP712TypedData {
+    /// Build CrossJSONRPC.eth_signTypedData_v4 payload from typed data and address
+    func asJSONRPC(address: String) -> CrossJSONRPC {
+        return .eth_signTypedData_v4(
+            address: address,
+            types: types,
+            primaryType: primaryType,
+            domain: domain,
+            message: message
+        )
     }
 }
 
@@ -112,7 +102,7 @@ public struct EIP712TypedData: Codable {
 public struct EIP712Type: Codable {
     public let name: String
     public let type: String
-    
+
     public init(name: String, type: String) {
         self.name = name
         self.type = type
@@ -126,7 +116,7 @@ public struct EIP712Domain: Codable {
     public let chainId: Int?
     public let verifyingContract: String?
     public let salt: String?
-    
+
     public init(name: String? = nil, version: String? = nil, chainId: Int? = nil, verifyingContract: String? = nil, salt: String? = nil) {
         self.name = name
         self.version = version
@@ -136,51 +126,4 @@ public struct EIP712Domain: Codable {
     }
 }
 
-// AnyCodable helper for encoding/decoding [String: Any]
-private struct AnyCodable: Codable {
-    let value: Any
-    
-    init(_ value: Any) {
-        self.value = value
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        
-        if let stringValue = value as? String {
-            try container.encode(stringValue)
-        } else if let intValue = value as? Int {
-            try container.encode(intValue)
-        } else if let doubleValue = value as? Double {
-            try container.encode(doubleValue)
-        } else if let boolValue = value as? Bool {
-            try container.encode(boolValue)
-        } else if let arrayValue = value as? [Any] {
-            try container.encode(arrayValue.map { AnyCodable($0) })
-        } else if let dictValue = value as? [String: Any] {
-            try container.encode(dictValue.mapValues { AnyCodable($0) })
-        } else {
-            throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: encoder.codingPath, debugDescription: "Invalid value"))
-        }
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        
-        if let stringValue = try? container.decode(String.self) {
-            value = stringValue
-        } else if let intValue = try? container.decode(Int.self) {
-            value = intValue
-        } else if let doubleValue = try? container.decode(Double.self) {
-            value = doubleValue
-        } else if let boolValue = try? container.decode(Bool.self) {
-            value = boolValue
-        } else if let arrayValue = try? container.decode([AnyCodable].self) {
-            value = arrayValue.map { $0.value }
-        } else if let dictValue = try? container.decode([String: AnyCodable].self) {
-            value = dictValue.mapValues { $0.value }
-        } else {
-            throw DecodingError.typeMismatch(AnyCodable.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Invalid value"))
-        }
-    }
-}
+// Removed private AnyCodable in favor of shared AnyCodable from Commons

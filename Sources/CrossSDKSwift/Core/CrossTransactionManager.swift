@@ -28,187 +28,47 @@ public class CrossTransactionManager: ObservableObject {
         setupResponseObserver()
     }
 
-    /// 메시지 서명
-    /// - Parameter message: 서명할 메시지
-    /// - Returns: 서명된 결과
-    public func signMessage(_ message: String) async throws -> String {
-        guard let wallet = getCurrentWallet() else {
-            throw CrossSDKError.walletNotConnected
-        }
-
-        return try await withCheckedThrowingContinuation { continuation in
-            Task {
-                let requestId = UUID().uuidString
-                do {
-                    let request = W3MJSONRPC.personal_sign(
-                        address: wallet.address,
-                        message: message
-                    )
-
-                    pendingRequests[requestId] = { result in
-                        continuation.resume(with: result)
-                    }
-
-                    try await AppKit.instance.request(request)
-
-                    // 🔥 서명 요청 후 지갑 앱으로 이동
-                    await navigateToWalletForSigning()
-
-                } catch {
-                    pendingRequests.removeValue(forKey: requestId)
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
     /// 트랜잭션 전송
     /// - Parameter params: 트랜잭션 파라미터
     /// - Returns: 트랜잭션 해시
-    public func sendTransaction(_ params: CrossTransactionParams) async throws -> String {
+    public func sendTransaction(_ params: CrossTransactionParams, customData: CustomData? = nil) async throws -> String {
         guard let wallet = getCurrentWallet() else {
             throw CrossSDKError.walletNotConnected
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            Task {
-                do {
-                    let valueHex = try convertToWei(params.value)
-                    let dataHex = params.data ?? "0x"
+        let valueHex = try convertToWei(params.value)
+        let dataHex = params.data ?? "0x"
 
-                    let gasHex = try await computeGasHexIfNeeded(
-                        from: wallet.address,
-                        to: params.to,
-                        valueHex: valueHex,
-                        dataHex: dataHex,
-                        providedGasLimit: params.gasLimit
-                    )
+        let gasHex = try await computeGasHexIfNeeded(
+            from: wallet.address,
+            to: params.to,
+            valueHex: valueHex,
+            dataHex: dataHex,
+            providedGasLimit: params.gasLimit
+        )
 
-                    let fee = try await buildFeeConfig(for: params.type, providedGasPrice: params.gasPrice)
+        let fee = try await buildFeeConfig(for: params.type, providedGasPrice: params.gasPrice)
 
-                    let request = W3MJSONRPC.eth_sendTransaction(
-                        from: wallet.address,
-                        to: params.to,
-                        value: valueHex,
-                        data: dataHex,
-                        nonce: nil,
-                        gas: gasHex,
-                        gasPrice: fee.gasPriceHex,
-                        maxFeePerGas: fee.maxFeePerGasHex,
-                        maxPriorityFeePerGas: fee.maxPriorityFeePerGasHex,
-                        gasLimit: gasHex,
-                        chainId: wallet.chain.rawValue
-                    )
+        let requestObject = CrossJSONRPCObject(
+            jsonrpc: .eth_sendTransaction(
+                from: wallet.address,
+                to: params.to,
+                value: valueHex,
+                data: dataHex,
+                nonce: nil,
+                gas: gasHex,
+                gasPrice: fee.gasPriceHex,
+                maxFeePerGas: fee.maxFeePerGasHex,
+                maxPriorityFeePerGas: fee.maxPriorityFeePerGasHex,
+                gasLimit: gasHex,
+                chainId: wallet.chain.rawValue
+            ),
+            customData: customData
+        )
 
-                    let requestId = UUID().uuidString
-                    pendingRequests[requestId] = { result in
-                        continuation.resume(with: result)
-                    }
-
-                    try await AppKit.instance.request(request)
-
-                    // 🔥 전송 요청 후 지갑 앱으로 이동
-                    await navigateToWalletForSigning()
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    /// 트랜잭션 서명 (전송하지 않음)
-    /// - Parameter params: 트랜잭션 파라미터
-    /// - Returns: 서명된 트랜잭션
-    public func signTransaction(_ params: CrossTransactionParams) async throws -> String {
-        guard let wallet = getCurrentWallet() else {
-            throw CrossSDKError.walletNotConnected
-        }
-        return try await withCheckedThrowingContinuation { continuation in
-            Task {
-                do {
-                    let valueHex = try convertToWei(params.value)
-                    let dataHex = params.data ?? "0x"
-
-                    let gasHex = try await computeGasHexIfNeeded(
-                        from: wallet.address,
-                        to: params.to,
-                        valueHex: valueHex,
-                        dataHex: dataHex,
-                        providedGasLimit: params.gasLimit
-                    )
-
-                    let fee = try await buildFeeConfig(for: params.type, providedGasPrice: params.gasPrice)
-
-                    let request = W3MJSONRPC.eth_signTransaction(
-                        from: wallet.address,
-                        to: params.to,
-                        value: valueHex,
-                        data: dataHex,
-                        nonce: nil,
-                        gas: gasHex,
-                        gasPrice: fee.gasPriceHex,
-                        maxFeePerGas: fee.maxFeePerGasHex,
-                        maxPriorityFeePerGas: fee.maxPriorityFeePerGasHex,
-                        gasLimit: gasHex,
-                        chainId: wallet.chain.rawValue
-                    )
-
-                    let requestId = UUID().uuidString
-                    pendingRequests[requestId] = { result in
-                        continuation.resume(with: result)
-                    }
-
-                    try await AppKit.instance.request(request)
-
-                    // 🔥 트랜잭션 서명 요청 후 지갑 앱으로 이동
-                    await navigateToWalletForSigning()
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
-    /// 타입이 지정된 데이터 서명 (EIP-712)
-    /// - Parameters:
-    ///   - data: 서명할 타입 데이터
-    ///   - address: 서명할 주소
-    /// - Returns: 서명 결과
-    public func signTypedData(_ data: String, address: String? = nil) async throws -> String {
-        guard let wallet = getCurrentWallet() else {
-            throw CrossSDKError.walletNotConnected
-        }
-
-        let signerAddress = address ?? wallet.address
-
-        return try await withCheckedThrowingContinuation { continuation in
-            Task {
-                do {
-                    // eth_signTypedData 요청 생성
-                    guard let session = AppKit.instance.getSessions().first,
-                          let chain = AppKit.instance.getSelectedChain(),
-                          let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
-                        throw CrossSDKError.walletNotConnected
-                    }
-
-                    let requestId = UUID().uuidString
-                    pendingRequests[requestId] = { result in
-                        continuation.resume(with: result)
-                    }
-
-                    try await AppKit.instance.request(params:
-                        .init(
-                            topic: session.topic,
-                            method: "eth_signTypedData",
-                            params: AnyCodable([signerAddress, data]),
-                            chainId: blockchain
-                        )
-                    )
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
+        // AppKit 요청을 통해 트랜잭션 해시를 기다렸다가 반환
+        let txHash = try await performAppKitTransactionRequest(requestObject)
+        return txHash
     }
 
     // MARK: - Private Methods
@@ -414,6 +274,67 @@ public class CrossTransactionManager: ObservableObject {
                     )
                 } catch {
                     continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func performAppKitTransactionRequest(_ requestObject: CrossJSONRPCObject) async throws -> String {
+        print("🔐 CrossTransactionManager: Sending AppKit trasaction request")
+        let raw = requestObject.rawValues
+        print("🔐 Method: \(raw.method)")
+        print("🔐 Params: \(raw.params)")
+
+        // 세션 및 체인 정보 확보
+        guard let session = AppKit.instance.getSessions().first,
+              let chain = AppKit.instance.getSelectedChain(),
+              let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
+            throw CrossSigningError.invalidRequest
+        }
+
+        // WalletConnect Request 구성
+        let wcRequest = try Request(
+            topic: session.topic,
+            method: raw.method,
+            params: AnyCodable(any: raw.params),
+            chainId: blockchain
+        )
+
+        return try await withCheckedThrowingContinuation { [weak self] (continuation: CheckedContinuation<String, Error>) in
+            Task { [weak self] in
+                do {
+                    // AppKit을 통해 요청 전송 (자동으로 지갑 앱으로 딥링크)
+                    try await AppKit.instance.request(params: wcRequest)
+                    print("🔐 CrossTransactionManager: AppKit request sent successfully")
+
+                    // 🔥 요청 후 지갑 앱으로 이동
+                    await MainActor.run {
+                        AppKit.instance.launchCurrentWallet()
+                        print("✅ CrossTransactionManager: Launched current wallet via AppKit")
+                    }
+
+                    // 요청 ID를 생성하고 대기 목록에 추가
+                    let requestId = UUID().uuidString
+                    self?.pendingRequests[requestId] = { result in
+                        switch result {
+                        case .success(let txHash):
+                            continuation.resume(returning: txHash)
+                        case .failure(let error):
+                            continuation.resume(throwing: error)
+                        }
+                    }
+
+                    // 타임아웃 설정 (30초)
+                    Task { [weak self] in
+                        try? await Task.sleep(nanoseconds: 30_000_000_000)
+                        if let completion = self?.pendingRequests.removeValue(forKey: requestId) {
+                            completion(.failure(CrossSigningError.timeout))
+                        }
+                    }
+
+                } catch {
+                    print("🔐 CrossTransactionManager: AppKit request failed: \(error)")
+                    continuation.resume(throwing: CrossSigningError.requestFailed(error.localizedDescription))
                 }
             }
         }

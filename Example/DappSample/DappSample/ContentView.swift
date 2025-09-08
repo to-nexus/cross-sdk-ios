@@ -7,8 +7,6 @@
 
 import SwiftUI
 import CrossSDKSwift
-import CrossAppKit
-import WalletConnectSign
 
 struct ContentView: View {
     @ObservedObject private var sdk = CrossSDKSwift.shared
@@ -16,67 +14,58 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-
-            Text("Cross SDK DappSample")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Text("Now using new CrossSDKSwift v\(CrossSDKSwift.version)! 🚀")
-                .font(.subheadline)
-                .foregroundColor(.blue)
-
-            // 연결 상태 표시
-            ConnectionStatusView()
-
-            // 지갑 연결/해제 버튼
-            WalletConnectionView()
-
-            // ReownAppKit UI 사용 연결 버튼
-            ConnectWalletViaAppKitUI(isConnected: sdk.isConnected)
-
-            // 체인 변경 버튼들
-            if sdk.isConnected {
-                ChainSwitchView()
-            }
-
-            // 서명 예제 뷰로 이동
-            if sdk.isConnected {
-                NavigationLink(destination: SigningExampleView()) {
-                    HStack {
-                        Image(systemName: "signature")
-                        Text("서명 예제 테스트")
+                Image(systemName: "globe")
+                    .imageScale(.large)
+                    .foregroundStyle(.tint)
+                
+                Text("Cross SDK DappSample")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("Now using new CrossSDKSwift v\(CrossSDKSwift.version)! 🚀")
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
+                
+                // 연결 상태 표시
+                ConnectionStatusView()
+                
+                // 지갑 연결/해제 버튼
+                WalletConnectionView()
+                
+                // ReownAppKit UI 사용 연결 버튼
+                ConnectWalletViaAppKitUI(isConnected: sdk.isConnected)
+                
+                // 체인 변경 버튼들
+                if sdk.isConnected {
+                    ChainSwitchView()
+                }
+                
+                // 서명 예제 뷰로 이동
+                if sdk.isConnected {
+                    NavigationLink(destination: SigningExampleView()) {
+                        HStack {
+                            Image(systemName: "signature")
+                            Text("서명 예제 테스트")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-                // 전송 예제 뷰로 이동
-                NavigationLink(destination: SendExampleView()) {
-                    HStack {
-                        Image(systemName: "paperplane")
-                        Text("전송 예제 테스트")
+                    // 전송 예제 뷰로 이동
+                    NavigationLink(destination: SendExampleView()) {
+                        HStack {
+                            Image(systemName: "paperplane")
+                            Text("전송 예제 테스트")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
                 }
-            }
-
-            // ETH 전송 테스트 버튼
-            Button("Send ETH Test (0.001 ETH)") {
-                Task {
-                    await testSendETH()
-                }
-            }
-            .buttonStyle(.bordered)
-            .disabled(!sdk.isConnected)
             }
             .padding()
             .navigationTitle("CrossSDK DappSample")
@@ -276,6 +265,7 @@ struct ChainSwitchView: View {
 
 // MARK: - ReownAppKit UI 연결 버튼
 struct ConnectWalletViaAppKitUI: View {
+    @ObservedObject private var sdk = CrossSDKSwift.shared
     let isConnected: Bool
     init(isConnected: Bool) {
         self.isConnected = isConnected
@@ -288,7 +278,7 @@ struct ConnectWalletViaAppKitUI: View {
             Button(isConnected ? "More Account info via AppKit" : "Connect Wallet via AppKit") {
                 // ReownAppKit의 내장 UI 모달 표시
                 print("🎯 DappSample: Connect Wallet via UI Kit button pressed")
-                AppKit.present()
+                sdk.appKitPresent()
                 print("🎯 DappSample: AppKit.present() called")
             }
             .buttonStyle(.bordered)

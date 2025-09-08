@@ -188,6 +188,13 @@ extension AnyCodable: Decodable, Encodable {
                 let decodable = AnyCodable(value)
                 try container.encode(decodable)
             }
+        } else if let array = value as? [AnyCodable] {
+            // Support arrays that already contain AnyCodable elements
+            var container = encoder.unkeyedContainer()
+            for element in array {
+                let decodable = AnyCodable(element.value)
+                try container.encode(decodable)
+            }
         } else if let dictionary = value as? [String: Any] {
             var container = encoder.container(keyedBy: CodingKeys.self)
             for (key, value) in dictionary {
@@ -195,6 +202,17 @@ extension AnyCodable: Decodable, Encodable {
                 let decodable = AnyCodable(value)
                 try container.encode(decodable, forKey: codingKey)
             }
+        } else if let dictionary = value as? [String: AnyCodable] {
+            // Support dictionaries whose values are AnyCodable
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            for (key, wrapped) in dictionary {
+                let codingKey = CodingKeys(stringValue: key)!
+                let decodable = AnyCodable(wrapped.value)
+                try container.encode(decodable, forKey: codingKey)
+            }
+        } else if let wrapped = value as? AnyCodable {
+            // Nested AnyCodable – encode its underlying value
+            try wrapped.encode(to: encoder)
         } else if value is NSNull {
             // ignoring that key
         } else {
@@ -207,6 +225,13 @@ extension AnyCodable: Decodable, Encodable {
                 try container.encode(boolVal)
             } else if let stringVal = value as? String {
                 try container.encode(stringVal)
+            } else if let dateVal = value as? Date {
+                // Encode dates as ISO8601 strings
+                let iso = ISO8601DateFormatter()
+                try container.encode(iso.string(from: dateVal))
+            } else if let convertible = value as? CustomStringConvertible {
+                // Fallback to description for unknown but printable types
+                try container.encode(convertible.description)
             } else {
                 throw EncodingError.invalidValue(value, EncodingError.Context.init(codingPath: [], debugDescription: "The value is not encodable."))
             }
