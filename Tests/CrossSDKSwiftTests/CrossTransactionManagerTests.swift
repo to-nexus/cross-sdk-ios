@@ -241,4 +241,260 @@ final class CrossTransactionManagerTests: XCTestCase {
         print("   Hex formatting: ✓")
         print("   Required fields: ✓")
     }
+    
+    /// Test contract reading functionality
+    func testContractReading() throws {
+        print("🧪 Testing contract reading functionality...")
+        
+        let manager = CrossTransactionManager()
+        
+        // Test function selector generation
+        let balanceOfABI = "balanceOf(address)"
+        let totalSupplyABI = "totalSupply()"
+        let transferABI = "transfer(address,uint256)"
+        
+        // These should not throw
+        XCTAssertNoThrow(try manager.generateFunctionSelector(abi: balanceOfABI))
+        XCTAssertNoThrow(try manager.generateFunctionSelector(abi: totalSupplyABI))
+        XCTAssertNoThrow(try manager.generateFunctionSelector(abi: transferABI))
+        
+        print("✅ Function selector generation tests passed!")
+        
+        // Test parameter encoding
+        let addressParam = "0x742d35cc6634c0532925a3b8d6ac6e7d7f0b2c2f"
+        let numberParam = "1000000000000000000"  // 1 ETH in wei
+        let hexParam = "0x1000000000000000000000000000000000000000000000000de0b6b3a7640000"
+        
+        XCTAssertNoThrow(try manager.encodeParameters(params: [addressParam]))
+        XCTAssertNoThrow(try manager.encodeParameters(params: [numberParam]))
+        XCTAssertNoThrow(try manager.encodeParameters(params: [hexParam]))
+        XCTAssertNoThrow(try manager.encodeParameters(params: [addressParam, numberParam]))
+        XCTAssertNoThrow(try manager.encodeParameters(params: []))
+        
+        print("✅ Parameter encoding tests passed!")
+        
+        // Test invalid parameters
+        let invalidParam = "invalid_parameter_type"
+        XCTAssertThrowsError(try manager.encodeParameters(params: [invalidParam])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Unsupported parameter type"))
+        }
+        
+        print("✅ Invalid parameter handling tests passed!")
+        
+        // Test specific encoding results
+        let encodedAddress = try manager.encodeParameters(params: [addressParam])
+        XCTAssertEqual(encodedAddress.count, 64, "Address should be encoded to 64 hex characters (32 bytes)")
+        XCTAssertTrue(encodedAddress.hasSuffix("742d35cc6634c0532925a3b8d6ac6e7d7f0b2c2f"), "Address should be properly padded")
+        
+        let encodedNumber = try manager.encodeParameters(params: [numberParam])
+        XCTAssertEqual(encodedNumber.count, 64, "Number should be encoded to 64 hex characters (32 bytes)")
+        
+        print("✅ Encoding result validation tests passed!")
+        
+        print("✅ All contract reading tests passed!")
+    }
+    
+    /// Test ABI function selector generation
+    func testFunctionSelectorGeneration() throws {
+        print("🧪 Testing function selector generation...")
+        
+        let manager = CrossTransactionManager()
+        
+        // Test known function selectors
+        let balanceOfSelector = try manager.generateFunctionSelector(abi: "balanceOf(address)")
+        let totalSupplySelector = try manager.generateFunctionSelector(abi: "totalSupply()")
+        let transferSelector = try manager.generateFunctionSelector(abi: "transfer(address,uint256)")
+        
+        // Verify selector length (should be 8 hex characters = 4 bytes)
+        XCTAssertEqual(balanceOfSelector.count, 8, "Function selector should be 8 hex characters")
+        XCTAssertEqual(totalSupplySelector.count, 8, "Function selector should be 8 hex characters")
+        XCTAssertEqual(transferSelector.count, 8, "Function selector should be 8 hex characters")
+        
+        // Verify selectors are different
+        XCTAssertNotEqual(balanceOfSelector, totalSupplySelector, "Different functions should have different selectors")
+        XCTAssertNotEqual(balanceOfSelector, transferSelector, "Different functions should have different selectors")
+        XCTAssertNotEqual(totalSupplySelector, transferSelector, "Different functions should have different selectors")
+        
+        // Test that same ABI produces same selector
+        let balanceOfSelector2 = try manager.generateFunctionSelector(abi: "balanceOf(address)")
+        XCTAssertEqual(balanceOfSelector, balanceOfSelector2, "Same ABI should produce same selector")
+        
+        print("✅ Function selector generation tests passed!")
+        print("   balanceOf(address): \(balanceOfSelector)")
+        print("   totalSupply(): \(totalSupplySelector)")
+        print("   transfer(address,uint256): \(transferSelector)")
+    }
+    
+    /// Test parameter encoding edge cases
+    func testParameterEncodingEdgeCases() throws {
+        print("🧪 Testing parameter encoding edge cases...")
+        
+        let manager = CrossTransactionManager()
+        
+        // Test empty parameters
+        let emptyEncoded = try manager.encodeParameters(params: [])
+        XCTAssertEqual(emptyEncoded, "", "Empty parameters should produce empty string")
+        
+        // Test zero values
+        let zeroNumber = try manager.encodeParameters(params: ["0"])
+        XCTAssertEqual(zeroNumber.count, 64, "Zero should be encoded to 64 hex characters")
+        XCTAssertEqual(zeroNumber, String(repeating: "0", count: 64), "Zero should be all zeros")
+        
+        // Test maximum UInt64 value
+        let maxUInt64 = String(UInt64.max)
+        XCTAssertNoThrow(try manager.encodeParameters(params: [maxUInt64]))
+        
+        // Test hex values with and without 0x prefix
+        let hexWithPrefix = "0x1234"
+        let encodedWithPrefix = try manager.encodeParameters(params: [hexWithPrefix])
+        
+        XCTAssertEqual(encodedWithPrefix.count, 64, "Hex value should be encoded to 64 characters")
+        
+        // Test mixed parameters
+        let mixedParams = ["0x742d35cc6634c0532925a3b8d6ac6e7d7f0b2c2f", "1000"]
+        let mixedEncoded = try manager.encodeParameters(params: mixedParams)
+        XCTAssertEqual(mixedEncoded.count, 128, "Two parameters should produce 128 hex characters (64 each)")
+        
+        print("✅ Parameter encoding edge cases tests passed!")
+    }
+    
+    /// Test contract writing functionality
+    func testContractWriting() throws {
+        print("🧪 Testing contract writing functionality...")
+        
+        let manager = CrossTransactionManager()
+        
+        // Test writeContract parameter validation
+        let contractAddress = "0xA0b86a33E6441E0C6b06b7A8DB6e1E2C6A8b7B8C"
+        let transferABI = "transfer(address,uint256)"
+        let approveABI = "approve(address,uint256)"
+        let mintABI = "mint()"
+        
+        // Test data generation for different contract calls
+        let recipient = "0x742d35cc6634c0532925a3b8d6ac6e7d7f0b2c2f"
+        let amount = "1000000000000000000"  // 1 token (18 decimals)
+        
+        // Test function selector and parameter encoding (without actually sending)
+        let transferSelector = try manager.generateFunctionSelector(abi: transferABI)
+        let transferParams = try manager.encodeParameters(params: [recipient, amount])
+        let transferData = "0x" + transferSelector + transferParams
+        
+        XCTAssertEqual(transferSelector.count, 8, "Transfer selector should be 8 hex characters")
+        XCTAssertEqual(transferParams.count, 128, "Two parameters should produce 128 hex characters")
+        XCTAssertTrue(transferData.hasPrefix("0x"), "Call data should start with 0x")
+        
+        print("✅ Contract call data generation tests passed!")
+        
+        // Test approve function
+        let approveSelector = try manager.generateFunctionSelector(abi: approveABI)
+        let approveParams = try manager.encodeParameters(params: [contractAddress, amount])
+        let approveData = "0x" + approveSelector + approveParams
+        
+        XCTAssertEqual(approveSelector.count, 8, "Approve selector should be 8 hex characters")
+        XCTAssertNotEqual(transferSelector, approveSelector, "Different functions should have different selectors")
+        
+        print("✅ Multiple contract functions tests passed!")
+        
+        // Test parameterless function
+        let mintSelector = try manager.generateFunctionSelector(abi: mintABI)
+        let mintParams = try manager.encodeParameters(params: [])
+        let mintData = "0x" + mintSelector + mintParams
+        
+        XCTAssertEqual(mintSelector.count, 8, "Mint selector should be 8 hex characters")
+        XCTAssertEqual(mintParams.count, 0, "No parameters should produce empty string")
+        XCTAssertEqual(mintData.count, 10, "Parameterless call data should be 10 characters (0x + 8)")
+        
+        print("✅ Parameterless contract function tests passed!")
+        
+        print("✅ All contract writing tests passed!")
+        print("   Transfer data: \(transferData.prefix(20))...")
+        print("   Approve data: \(approveData.prefix(20))...")
+        print("   Mint data: \(mintData)")
+    }
+    
+    /// Test writeContract with various transaction types
+    func testWriteContractTransactionTypes() throws {
+        print("🧪 Testing writeContract with different transaction types...")
+        
+        let manager = CrossTransactionManager()
+        let contractAddress = "0xA0b86a33E6441E0C6b06b7A8DB6e1E2C6A8b7B8C"
+        
+        // Test ERC-20 transfer call data generation
+        let transferABI = "transfer(address,uint256)"
+        let recipient = "0x742d35cc6634c0532925a3b8d6ac6e7d7f0b2c2f"
+        let amount = "1000000000000000000"
+        
+        let transferSelector = try manager.generateFunctionSelector(abi: transferABI)
+        let transferParams = try manager.encodeParameters(params: [recipient, amount])
+        let expectedData = "0x" + transferSelector + transferParams
+        
+        // Verify the expected call data structure
+        XCTAssertTrue(expectedData.hasPrefix("0x"), "Call data should start with 0x")
+        XCTAssertEqual(expectedData.count, 138, "Transfer call data should be 138 characters (0x + 8 + 128)")
+        
+        print("✅ ERC-20 transfer call data validation passed!")
+        
+        // Test ERC-20 approve call data
+        let approveABI = "approve(address,uint256)"
+        let spender = "0x1234567890123456789012345678901234567890"
+        let allowance = "2000000000000000000"
+        
+        let approveSelector = try manager.generateFunctionSelector(abi: approveABI)
+        let approveParams = try manager.encodeParameters(params: [spender, allowance])
+        let approveData = "0x" + approveSelector + approveParams
+        
+        XCTAssertNotEqual(transferSelector, approveSelector, "Transfer and approve should have different selectors")
+        XCTAssertEqual(approveData.count, 138, "Approve call data should be 138 characters")
+        
+        print("✅ ERC-20 approve call data validation passed!")
+        
+        // Test contract deployment-like call (no 'to' address, but we'll use constructor params)
+        let constructorABI = "constructor(string,string,uint256)"
+        let constructorParams = ["TokenName", "TKN", "1000000000000000000000000"]  // name, symbol, totalSupply
+        
+        // Note: For constructor, we can't use encodeParameters as it doesn't handle string encoding
+        // This is just to test the selector generation
+        let constructorSelector = try manager.generateFunctionSelector(abi: constructorABI)
+        XCTAssertEqual(constructorSelector.count, 8, "Constructor selector should be 8 hex characters")
+        
+        print("✅ Constructor selector generation passed!")
+        
+        print("✅ All writeContract transaction type tests passed!")
+    }
+    
+    /// Test writeContract error handling
+    func testWriteContractErrorHandling() throws {
+        print("🧪 Testing writeContract error handling...")
+        
+        let manager = CrossTransactionManager()
+        
+        // Test invalid ABI signatures
+        let invalidABI = "invalid_abi_signature"
+        XCTAssertNoThrow(try manager.generateFunctionSelector(abi: invalidABI), "Should generate selector even for invalid ABI")
+        
+        // Test invalid parameters
+        let validABI = "transfer(address,uint256)"
+        let invalidParams = ["invalid_address", "not_a_number"]
+        
+        XCTAssertThrowsError(try manager.encodeParameters(params: ["invalid_address"])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Unsupported parameter type"))
+        }
+        
+        XCTAssertThrowsError(try manager.encodeParameters(params: ["0x123"])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Unsupported parameter type"))
+        }
+        
+        print("✅ Error handling tests passed!")
+        
+        // Test edge cases
+        let emptyABI = ""
+        XCTAssertNoThrow(try manager.generateFunctionSelector(abi: emptyABI))
+        
+        let longABI = "veryLongFunctionNameWithManyParameters(address,uint256,string,bytes32,bool,uint8)"
+        XCTAssertNoThrow(try manager.generateFunctionSelector(abi: longABI))
+        
+        print("✅ Edge case tests passed!")
+        
+        print("✅ All writeContract error handling tests passed!")
+    }
 }

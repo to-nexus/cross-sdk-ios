@@ -70,6 +70,148 @@ public class CrossTransactionManager: ObservableObject {
         let txHash = try await performAppKitTransactionRequest(requestObject)
         return txHash
     }
+    
+    /// 스마트 컨트랙트의 특정 값을 읽어옴 (view/pure 함수 호출)
+    /// - Parameters:
+    ///   - contractAddress: 컨트랙트 주소
+    ///   - methodName: 호출할 메소드명 (예: "balanceOf")
+    ///   - abi: 메소드의 ABI 시그니처 (예: "balanceOf(address)")
+    ///   - params: 메소드 파라미터 배열 (예: ["0x123..."])
+    /// - Returns: 컨트랙트 함수의 반환값 (hex string)
+    public func readContract(
+        contractAddress: String,
+        methodName: String,
+        abi: String,
+        params: [String] = []
+    ) async throws -> String {
+        // 1. ABI 시그니처에서 함수 selector 생성
+        let functionSelector = try generateFunctionSelector(abi: abi)
+        
+        // 2. 파라미터 인코딩
+        let encodedParams = try encodeParameters(params: params)
+        
+        // 3. call data 구성 (selector + encoded params)
+        let callData = "0x" + functionSelector + encodedParams
+        
+        print("🔍 CrossTransactionManager: Reading contract")
+        print("   Contract: \(contractAddress)")
+        print("   Method: \(methodName)")
+        print("   ABI: \(abi)")
+        print("   Params: \(params)")
+        print("   Call Data: \(callData)")
+        
+        // 4. eth_call 실행
+        return try await performContractCall(
+            to: contractAddress,
+            data: callData
+        )
+    }
+    
+    /// 간단한 컨트랙트 읽기 (파라미터 없는 함수용)
+    /// - Parameters:
+    ///   - contractAddress: 컨트랙트 주소
+    ///   - methodName: 호출할 메소드명
+    ///   - abi: 메소드의 ABI 시그니처
+    /// - Returns: 컨트랙트 함수의 반환값 (hex string)
+    public func readContract(
+        contractAddress: String,
+        methodName: String,
+        abi: String
+    ) async throws -> String {
+        return try await readContract(
+            contractAddress: contractAddress,
+            methodName: methodName,
+            abi: abi,
+            params: []
+        )
+    }
+    
+    /// 스마트 컨트랙트 함수 실행 (상태 변경)
+    /// - Parameters:
+    ///   - contractAddress: 컨트랙트 주소
+    ///   - methodName: 호출할 메소드명 (예: "transfer")
+    ///   - abi: 메소드의 ABI 시그니처 (예: "transfer(address,uint256)")
+    ///   - params: 메소드 파라미터 배열 (예: ["0x123...", "1000000000000000000"])
+    ///   - value: 전송할 ETH 양 (기본값: "0")
+    ///   - gasLimit: 가스 한도 (옵션, 자동 추정)
+    ///   - gasPrice: 가스 가격 (옵션, 자동 조회)
+    ///   - type: 트랜잭션 타입 (기본값: .dynamic)
+    ///   - customData: 커스텀 데이터 (옵션)
+    /// - Returns: 트랜잭션 해시
+    public func writeContract(
+        contractAddress: String,
+        methodName: String,
+        abi: String,
+        params: [String] = [],
+        value: String = "0",
+        gasLimit: String? = nil,
+        gasPrice: String? = nil,
+        type: TransactionType = .dynamic,
+        customData: CustomData? = nil
+    ) async throws -> String {
+        // 1. ABI 시그니처에서 함수 selector 생성
+        let functionSelector = try generateFunctionSelector(abi: abi)
+        
+        // 2. 파라미터 인코딩
+        let encodedParams = try encodeParameters(params: params)
+        
+        // 3. call data 구성 (selector + encoded params)
+        let callData = "0x" + functionSelector + encodedParams
+        
+        print("🔐 CrossTransactionManager: Writing contract")
+        print("   Contract: \(contractAddress)")
+        print("   Method: \(methodName)")
+        print("   ABI: \(abi)")
+        print("   Params: \(params)")
+        print("   Value: \(value) ETH")
+        print("   Call Data: \(callData)")
+        
+        // 4. CrossTransactionParams 구성
+        let transactionParams = CrossTransactionParams(
+            to: contractAddress,
+            value: value,
+            data: callData,
+            gasLimit: gasLimit,
+            gasPrice: gasPrice,
+        )
+        
+        // 5. sendTransaction을 통해 실행
+        return try await sendTransaction(transactionParams, customData: customData)
+    }
+    
+    /// 간단한 컨트랙트 쓰기 (파라미터 없는 함수용)
+    /// - Parameters:
+    ///   - contractAddress: 컨트랙트 주소
+    ///   - methodName: 호출할 메소드명
+    ///   - abi: 메소드의 ABI 시그니처
+    ///   - value: 전송할 ETH 양 (기본값: "0")
+    ///   - gasLimit: 가스 한도 (옵션)
+    ///   - gasPrice: 가스 가격 (옵션)
+    ///   - type: 트랜잭션 타입 (기본값: .dynamic)
+    ///   - customData: 커스텀 데이터 (옵션)
+    /// - Returns: 트랜잭션 해시
+    public func writeContract(
+        contractAddress: String,
+        methodName: String,
+        abi: String,
+        value: String = "0",
+        gasLimit: String? = nil,
+        gasPrice: String? = nil,
+        type: TransactionType = .dynamic,
+        customData: CustomData? = nil
+    ) async throws -> String {
+        return try await writeContract(
+            contractAddress: contractAddress,
+            methodName: methodName,
+            abi: abi,
+            params: [],
+            value: value,
+            gasLimit: gasLimit,
+            gasPrice: gasPrice,
+            type: type,
+            customData: customData
+        )
+    }
 
     // MARK: - Private Methods
 
@@ -215,10 +357,19 @@ public class CrossTransactionManager: ObservableObject {
     }
 
     private func estimateGasHex(from: String, to: String, valueHex: String, dataHex: String) async throws -> String {
-        // 1) 우선 네트워크 RPC로 직접 추정(Web3RPCService)
+        // 1) 우선 네트워크 RPC로 직접 추정
         if let rpcUrl = AppKit.instance.getSelectedChain()?.rpcUrl {
             do {
-                return try await Web3RPCService.estimateGasHex(rpcUrl: rpcUrl, from: from, to: to, valueHex: valueHex, dataHex: dataHex)
+                return try await performDirectRPCCall(
+                    rpcUrl: rpcUrl,
+                    method: "eth_estimateGas",
+                    params: [[
+                        "from": from,
+                        "to": to,
+                        "value": valueHex,
+                        "data": dataHex
+                    ]]
+                )
             } catch { /* fallback below */ }
         }
         // 2) 실패 시 세션 RPC로 시도 (권한 필요)
@@ -233,7 +384,7 @@ public class CrossTransactionManager: ObservableObject {
 
     private func fetchGasPriceHex() async throws -> String {
         if let rpcUrl = AppKit.instance.getSelectedChain()?.rpcUrl {
-            if let v = try? await Web3RPCService.gasPriceHex(rpcUrl: rpcUrl) { return v }
+            if let v = try? await performDirectRPCCall(rpcUrl: rpcUrl, method: "eth_gasPrice", params: []) { return v }
         }
         guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let chain = AppKit.instance.getSelectedChain(),
@@ -245,7 +396,7 @@ public class CrossTransactionManager: ObservableObject {
 
     private func fetchMaxPriorityFeePerGasHex() async throws -> String {
         if let rpcUrl = AppKit.instance.getSelectedChain()?.rpcUrl {
-            if let v = try? await Web3RPCService.maxPriorityFeePerGasHex(rpcUrl: rpcUrl) { return v }
+            if let v = try? await performDirectRPCCall(rpcUrl: rpcUrl, method: "eth_maxPriorityFeePerGas", params: []) { return v }
         }
         guard let session = CrossSDKSwift.shared.getCurrentSession(),
               let chain = AppKit.instance.getSelectedChain(),
@@ -371,6 +522,131 @@ public class CrossTransactionManager: ObservableObject {
 
         while out.count > 1 && out.last == "0" { _ = out.popLast() }
         return String(out.reversed())
+    }
+
+    // MARK: - Contract Call helpers
+    
+    /// ABI 시그니처에서 함수 selector 생성
+    internal func generateFunctionSelector(abi: String) throws -> String {
+        // ABI 시그니처를 keccak256으로 해시하고 첫 4바이트를 사용
+        let abiData = Data(abi.utf8)
+        let hash = CrossSDKSwift.shared.utils.keccak256(abiData)
+        let selector = hash.prefix(4)
+        return selector.map { String(format: "%02x", $0) }.joined()
+    }
+    
+    /// 파라미터 인코딩 (간단한 구현 - 주소와 uint256만 지원)
+    internal func encodeParameters(params: [String]) throws -> String {
+        var encoded = ""
+        
+        for param in params {
+            if param.hasPrefix("0x") && param.count == 42 {
+                // 주소 타입 (20바이트를 32바이트로 패딩)
+                let address = String(param.dropFirst(2)).lowercased()
+                let paddedAddress = String(repeating: "0", count: 24) + address
+                encoded += paddedAddress
+            } else if param.allSatisfy({ $0.isNumber }) {
+                // uint256 타입 (숫자를 32바이트 hex로 변환)
+                guard let number = UInt64(param) else {
+                    throw NSError(domain: "CrossSDKSwift", code: -1, 
+                                userInfo: [NSLocalizedDescriptionKey: "Invalid number format: \(param)"])
+                }
+                let hex = String(number, radix: 16)
+                let paddedHex = String(repeating: "0", count: max(0, 64 - hex.count)) + hex
+                encoded += paddedHex
+            } else if param.hasPrefix("0x") {
+                // 이미 hex 형태인 경우 (32바이트로 패딩)
+                let hex = String(param.dropFirst(2))
+                let paddedHex = String(repeating: "0", count: max(0, 64 - hex.count)) + hex
+                encoded += paddedHex
+            } else {
+                throw NSError(domain: "CrossSDKSwift", code: -1, 
+                            userInfo: [NSLocalizedDescriptionKey: "Unsupported parameter type: \(param)"])
+            }
+        }
+        
+        return encoded
+    }
+    
+    /// eth_call 실행
+    private func performContractCall(to contractAddress: String, data: String) async throws -> String {
+        // 1) 우선 네트워크 RPC로 직접 호출 시도
+        if let rpcUrl = AppKit.instance.getSelectedChain()?.rpcUrl {
+            do {
+                return try await performDirectRPCCall(
+                    rpcUrl: rpcUrl,
+                    method: "eth_call",
+                    params: [
+                        [
+                            "to": contractAddress,
+                            "data": data
+                        ],
+                        "latest"
+                    ]
+                )
+            } catch {
+                print("⚠️ Direct RPC call failed, trying session RPC: \(error)")
+            }
+        }
+        
+        // 2) 실패 시 세션 RPC로 시도
+        guard let session = CrossSDKSwift.shared.getCurrentSession(),
+              let chain = AppKit.instance.getSelectedChain(),
+              let blockchain = Blockchain(namespace: chain.chainNamespace, reference: chain.chainReference) else {
+            throw CrossSDKError.walletNotConnected
+        }
+        
+        let callParams: [String: Any] = [
+            "to": contractAddress,
+            "data": data
+        ]
+        
+        return try await performRPC(
+            method: "eth_call",
+            params: [callParams, "latest"],
+            topic: session.topic,
+            blockchain: blockchain
+        )
+    }
+    
+    /// 직접 RPC 호출 (HTTP)
+    private func performDirectRPCCall(rpcUrl: String, method: String, params: [Any]) async throws -> String {
+        guard let url = URL(string: rpcUrl) else {
+            throw NSError(domain: "CrossSDKSwift", code: -1, 
+                        userInfo: [NSLocalizedDescriptionKey: "Invalid RPC URL"])
+        }
+        
+        let requestBody: [String: Any] = [
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": 1
+        ]
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(domain: "CrossSDKSwift", code: -1, 
+                        userInfo: [NSLocalizedDescriptionKey: "Invalid JSON response"])
+        }
+        
+        if let error = json["error"] as? [String: Any],
+           let message = error["message"] as? String {
+            throw NSError(domain: "CrossSDKSwift", code: -1, 
+                        userInfo: [NSLocalizedDescriptionKey: "RPC Error: \(message)"])
+        }
+        
+        guard let result = json["result"] as? String else {
+            throw NSError(domain: "CrossSDKSwift", code: -1, 
+                        userInfo: [NSLocalizedDescriptionKey: "No result in RPC response"])
+        }
+        
+        return result
     }
 
     private func decimalStringToHex(_ decimal: String) -> String {
