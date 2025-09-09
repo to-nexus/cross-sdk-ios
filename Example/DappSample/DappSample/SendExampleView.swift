@@ -12,6 +12,10 @@ struct SendExampleView: View {
     @State private var errorMessage: String?
     @State private var txHash: String?
     @State private var showResult: Bool = false
+    
+    // Balance fetching states
+    @State private var currentBalance: String = "0"
+    @State private var isLoadingBalance: Bool = false
 
     var body: some View {
         NavigationView {
@@ -77,9 +81,11 @@ struct SendExampleView: View {
         HStack(spacing: 8) {
             TabPill(title: "네이티브 전송", isSelected: selectedTab == .native) {
                 selectedTab = .native
+                currentBalance = "0" // 탭 변경시 잔액 초기화
             }
             TabPill(title: "ERC-20 전송", isSelected: selectedTab == .erc20) {
                 selectedTab = .erc20
+                currentBalance = "0" // 탭 변경시 잔액 초기화
             }
         }
     }
@@ -106,13 +112,39 @@ struct SendExampleView: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
                     Spacer()
-                    Button("제안 금액") { amountText = suggestedAmount() }
-                        .font(.caption)
+                    Button(action: fetchCurrentBalance) {
+                        HStack(spacing: 4) {
+                            if isLoadingBalance {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                            }
+                            Text(isLoadingBalance ? "조회 중..." : "잔액 조회")
+                        }
+                    }
+                    .font(.caption)
+                    .disabled(isLoadingBalance || !sdk.isConnected)
                 }
                 TextField(selectedTab == .native ? nativeSymbol() + " 단위" : "토큰 단위(18 소수)", text: $amountText)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .font(.system(.body, design: .monospaced))
+                
+                if !currentBalance.isEmpty && currentBalance != "0" {
+                    HStack {
+                        Text("현재 잔액:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("\(formatBalance(currentBalance)) \(selectedTab == .native ? nativeSymbol() : "토큰")")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Button("전액") {
+                            amountText = formatBalance(currentBalance)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+                }
             }
 
             if selectedTab == .erc20 {
@@ -245,10 +277,56 @@ struct SendExampleView: View {
         sdk.currentChain?.symbol ?? "ETH"
     }
 
-    private func suggestedAmount() -> String {
-        guard let chainId = sdk.currentChain?.rawValue else { return "0.001" }
-        if chainId == "1" || chainId == "11155111" { return "0.0001" }
-        return "1"
+    private func fetchCurrentBalance() {
+        guard sdk.isConnected else { return }
+        
+        isLoadingBalance = true
+        
+        Task {
+            do {
+                let balance: String
+                
+                if selectedTab == .native {
+                    // Native 토큰 잔액 조회
+                    balance = try await sdk.fetchNativeBalance()
+                } else {
+                    // ERC-20 토큰 잔액 조회
+                    guard let contractAddress = currentERC20Contract() else {
+                        throw SimpleError("이 체인에서는 ERC-20 전송이 지원되지 않습니다")
+                    }
+                    balance = try await sdk.fetchERC20Balance(contractAddress: contractAddress)
+                }
+                
+                await MainActor.run {
+                    self.currentBalance = balance
+                    self.isLoadingBalance = false
+                }
+                
+                print("✅ Balance loaded: \(balance) \(selectedTab == .native ? nativeSymbol() : "토큰")")
+                
+            } catch {
+                await MainActor.run {
+                    self.isLoadingBalance = false
+                    self.errorMessage = error.localizedDescription
+                }
+                print("❌ Failed to load balance: \(error)")
+            }
+        }
+    }
+    
+    private func formatBalance(_ balance: String) -> String {
+        guard let balanceDecimal = Decimal(string: balance) else { return balance }
+        
+        let decimals = selectedTab == .native ? (sdk.currentChain?.decimals ?? 18) : 18
+        let divisor = pow(Decimal(10), decimals)
+        let formatted = balanceDecimal / divisor
+        
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 6
+        
+        return formatter.string(from: NSDecimalNumber(decimal: formatted)) ?? "0"
     }
 
     private func currentERC20Contract() -> String? {

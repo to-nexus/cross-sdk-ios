@@ -567,4 +567,32 @@ public class CrossUtils {
     public func getBlockchain(for chain: CrossChain) -> Blockchain? {
         return chain.blockchain
     }
+    
+    /// Convert hex string to decimal
+    /// - Parameter hex: Hex string to convert (with or without 0x prefix)
+    /// - Returns: Decimal representation
+    public func hexToDecimal(_ hex: String) -> Decimal {
+        let cleanHex = hex.hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
+        
+        // 빈 문자열이거나 "0"인 경우
+        if cleanHex.isEmpty || cleanHex.allSatisfy({ $0 == "0" }) {
+            return Decimal(0)
+        }
+        
+        // Hex를 decimal로 변환
+        var decimal = Decimal(0)
+        var multiplier = Decimal(1)
+        
+        for char in cleanHex.reversed() {
+            if let digit = Int(String(char), radix: 16) {
+                decimal += Decimal(digit) * multiplier
+                multiplier *= 16
+            } else {
+                // 잘못된 hex 문자가 있으면 0 반환
+                return Decimal(0)
+            }
+        }
+        
+        return decimal
+    }
 }

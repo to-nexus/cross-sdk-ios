@@ -65,6 +65,19 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                     }
+                    
+                    // 잔액 조회 예제 뷰로 이동
+                    NavigationLink(destination: BalanceExampleView()) {
+                        HStack {
+                            Image(systemName: "dollarsign.circle")
+                            Text("잔액 조회 예제")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
                 }
             }
             .padding()

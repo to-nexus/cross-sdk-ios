@@ -243,6 +243,91 @@ public final class CrossSDKSwift: ObservableObject {
     public func sendETH(to address: String, amount: String) async throws -> String {
         return try await sendNative(to: address, amount: amount)
     }
+    
+    // MARK: - Balance Query Methods
+    
+    /// 현재 연결된 지갑의 Native 토큰 잔액 조회
+    /// - Parameter address: 조회할 주소 (optional, 현재 연결된 지갑 주소 사용)
+    /// - Returns: Wei 단위의 잔액 문자열
+    public func fetchNativeBalance(address: String? = nil) async throws -> String {
+        let queryAddress = address ?? connectedWallet?.address
+        guard let queryAddress = queryAddress else {
+            throw CrossSDKError.walletNotConnected
+        }
+        
+        guard let rpcUrl = currentChain?.rpcUrl else {
+            throw CrossSDKError.invalidChain
+        }
+        
+        let balanceHex = try await transactionManager.performDirectRPCCall(
+            rpcUrl: rpcUrl,
+            method: "eth_getBalance",
+            params: [queryAddress, "latest"]
+        )
+        
+        let balanceWei = utils.hexToDecimal(balanceHex)
+        return NSDecimalNumber(decimal: balanceWei).stringValue
+    }
+    
+    /// ERC-20 토큰 잔액 조회
+    /// - Parameters:
+    ///   - contractAddress: ERC-20 토큰 컨트랙트 주소
+    ///   - address: 조회할 주소 (optional, 현재 연결된 지갑 주소 사용)
+    /// - Returns: 토큰의 최소 단위 잔액 문자열
+    public func fetchERC20Balance(contractAddress: String, address: String? = nil) async throws -> String {
+        let queryAddress = address ?? connectedWallet?.address
+        guard let queryAddress = queryAddress else {
+            throw CrossSDKError.walletNotConnected
+        }
+        
+        let balanceHex = try await transactionManager.readContract(
+            contractAddress: contractAddress,
+            methodName: "balanceOf",
+            abi: "balanceOf(address)",
+            params: [queryAddress]
+        )
+        
+        let balanceDecimal = utils.hexToDecimal(balanceHex)
+        return NSDecimalNumber(decimal: balanceDecimal).stringValue
+    }
+    
+    /// Native 토큰 잔액을 포맷된 형태로 조회
+    /// - Parameter address: 조회할 주소 (optional, 현재 연결된 지갑 주소 사용)
+    /// - Returns: 사용자가 읽기 쉬운 형태의 잔액 (예: "1.234567")
+    public func fetchFormattedNativeBalance(address: String? = nil) async throws -> String {
+        let balanceWei = try await fetchNativeBalance(address: address)
+        return formatBalance(balanceWei, decimals: currentChain?.decimals ?? 18)
+    }
+    
+    /// ERC-20 토큰 잔액을 포맷된 형태로 조회
+    /// - Parameters:
+    ///   - contractAddress: ERC-20 토큰 컨트랙트 주소
+    ///   - decimals: 토큰의 소수점 자릿수
+    ///   - address: 조회할 주소 (optional, 현재 연결된 지갑 주소 사용)
+    /// - Returns: 사용자가 읽기 쉬운 형태의 잔액
+    public func fetchFormattedERC20Balance(contractAddress: String, decimals: Int = 18, address: String? = nil) async throws -> String {
+        let balanceRaw = try await fetchERC20Balance(contractAddress: contractAddress, address: address)
+        return formatBalance(balanceRaw, decimals: decimals)
+    }
+    
+    /// 잔액을 포맷된 형태로 변환하는 헬퍼 메소드
+    /// - Parameters:
+    ///   - balance: 최소 단위 잔액 문자열
+    ///   - decimals: 소수점 자릿수
+    /// - Returns: 포맷된 잔액 문자열
+    private func formatBalance(_ balance: String, decimals: Int) -> String {
+        guard let balanceDecimal = Decimal(string: balance) else { return "0" }
+        
+        let divisor = pow(Decimal(10), decimals)
+        let formatted = balanceDecimal / divisor
+        
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 6
+        
+        return formatter.string(from: NSDecimalNumber(decimal: formatted)) ?? "0"
+    }
 
     // MARK: - 새로운 상태 관리 메서드
 

@@ -610,7 +610,7 @@ public class CrossTransactionManager: ObservableObject {
     }
     
     /// 직접 RPC 호출 (HTTP)
-    private func performDirectRPCCall(rpcUrl: String, method: String, params: [Any]) async throws -> String {
+    public func performDirectRPCCall(rpcUrl: String, method: String, params: [Any]) async throws -> String {
         guard let url = URL(string: rpcUrl) else {
             throw NSError(domain: "CrossSDKSwift", code: -1, 
                         userInfo: [NSLocalizedDescriptionKey: "Invalid RPC URL"])
