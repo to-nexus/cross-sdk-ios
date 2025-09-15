@@ -1,0 +1,92 @@
+name: Release CrossSDKSwift
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.2'
+    
+    - name: Cache SPM dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          .build
+          ~/Library/Caches/org.swift.swiftpm/
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+    
+    - name: Build and Test
+      run: |
+        swift build --configuration release
+        swift test --configuration release
+    
+    - name: Build XCFramework
+      run: |
+        chmod +x scripts/build_xcframework.sh
+        ./scripts/build_xcframework.sh
+    
+    - name: Get version from tag
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          build/CrossSDKSwift.xcframework.zip
+        name: CrossSDKSwift ${{ steps.version.outputs.VERSION }}
+        body: |
+          ## CrossSDKSwift ${{ steps.version.outputs.VERSION }}
+          
+          ### 설치 방법
+          
+          #### Swift Package Manager
+          ```swift
+          dependencies: [
+              .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "${{ steps.version.outputs.VERSION }}")
+          ]
+          ```
+          
+          #### CocoaPods
+          ```ruby
+          pod 'cross-sdk-swift', '~> ${{ steps.version.outputs.VERSION }}'
+          ```
+          
+          #### XCFramework
+          1. `CrossSDKSwift.xcframework.zip` 다운로드
+          2. 압축 해제 후 프로젝트에 추가
+          3. "Embed & Sign" 설정
+          
+          ### 변경사항
+          
+          전체 변경사항은 [CHANGELOG.md](https://github.com/to-nexus/cross-sdk-swift/blob/main/CHANGELOG.md)를 참고하세요.
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    # CocoaPods 배포는 수동으로 진행 (토큰 설정 필요)
+    # - name: Deploy to CocoaPods
+    #   if: ${{ secrets.COCOAPODS_TRUNK_TOKEN != '' }}
+    #   env:
+    #     COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+    #   run: |
+    #     pod trunk push cross-sdk-swift.podspec --allow-warnings

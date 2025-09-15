@@ -158,14 +158,3 @@ struct ContentView: View {
 3. **체인 관리**: 5개 주요 체인 간 쉬운 전환
 4. **트랜잭션 처리**: 서명과 전송의 간단한 구현
 5. **에러 처리**: 개선된 에러 메시지와 처리 방법
-
-## 🔄 마이그레이션 가이드
-
-기존 CrossSDKSwift에서 새 버전으로 마이그레이션하는 경우:
-
-1. 복잡한 빌더 패턴 → 간단한 `configure()` 메서드
-2. 여러 상태 관리 → 통합된 `connectionState`
-3. 수동 체인 설정 → 미리 정의된 `CrossChain` enum
-4. 복잡한 트랜잭션 구성 → 간단한 `sendNative()` 메서드
-
-새로운 CrossSDKSwift로 더 쉽고 빠르게 Dapp을 개발하세요! 🎉

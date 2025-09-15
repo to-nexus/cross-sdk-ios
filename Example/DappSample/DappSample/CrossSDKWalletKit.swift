@@ -85,8 +85,7 @@ struct CrossSDKAccountInfo: View {
     }
 
     private func formatAddress(_ address: String) -> String {
-        guard address.count > 10 else { return address }
-        return "\(address.prefix(6))...\(address.suffix(4))"
+        return CrossSDKSwift.shared.utils.formatAddress(address)
     }
 }
 

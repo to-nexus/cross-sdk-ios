@@ -335,41 +335,17 @@ struct SendExampleView: View {
     }
 
     private func isValidAddress(_ address: String) -> Bool {
-        let pattern = "^0x[0-9a-fA-F]{40}$"
-        return address.range(of: pattern, options: .regularExpression) != nil
+        return CrossSDKSwift.shared.utils.isValidAddress(address)
     }
 
     private func encodeERC20TransferData(to: String, amount: String, decimals: Int) throws -> String {
-        let selector = "a9059cbb"
-        let addressNoPrefix = String(to.dropFirst(2)).lowercased()
-        guard addressNoPrefix.count == 40 else { throw SimpleError("수신자 주소 형식이 올바르지 않습니다") }
-
-        let amountHex = try amountToUInt256Hex(amount, decimals: decimals)
-        let paddedAddress = addressNoPrefix.leftPadded(to: 64)
-        let paddedAmount = amountHex.leftPadded(to: 64)
-        return "0x" + selector + paddedAddress + paddedAmount
-    }
-
-    private func amountToUInt256Hex(_ amount: String, decimals: Int) throws -> String {
-        let s = amount.trimmingCharacters(in: .whitespacesAndNewlines)
-        let pattern = "^\\d*(?:\\.\\d*)?$"
-        guard s.range(of: pattern, options: .regularExpression) != nil, !s.isEmpty else {
-            throw SimpleError("금액 형식이 올바르지 않습니다")
+        do {
+            return try CrossSDKSwift.shared.utils.encodeERC20TransferData(to: to, amount: amount, decimals: decimals)
+        } catch {
+            throw SimpleError(error.localizedDescription)
         }
-
-        let parts = s.split(separator: ".", omittingEmptySubsequences: false)
-        let intPart = parts.first.map(String.init) ?? "0"
-        let fracPart = parts.count > 1 ? String(parts[1]) : ""
-        if fracPart.count > decimals { throw SimpleError("소수 자릿수가 너무 큽니다") }
-        let paddedFrac = fracPart + String(repeating: "0", count: max(0, decimals - fracPart.count))
-
-        // 결합된 10진 정수 문자열 (앞의 0 제거)
-        let combined = (intPart + paddedFrac).drop { $0 == "0" }
-        let decimalString = combined.isEmpty ? "0" : String(combined)
-
-        // 10진 문자열 → 16진 문자열로 변환
-        return decimalStringToHex(decimalString)
     }
+
 
     private var erc20Contracts: [String: String] {
         [
@@ -430,42 +406,6 @@ private struct TxResultView: View {
 
 private struct SimpleError: LocalizedError { let message: String; init(_ m: String) { message = m } ; var errorDescription: String? { message } }
 
-private extension String {
-    func leftPadded(to length: Int, with char: Character = "0") -> String {
-        if count >= length { return self }
-        return String(repeating: String(char), count: length - count) + self
-    }
-}
-
-private func decimalStringToHex(_ decimal: String) -> String {
-    let digitsOnly = decimal.trimmingCharacters(in: CharacterSet(charactersIn: "0123456789").inverted)
-    if digitsOnly == "" || digitsOnly == "0" { return "0" }
-    var number = digitsOnly
-    var hex = ""
-    let hexAlphabet = Array("0123456789abcdef")
-    while number != "0" {
-        let (q, r) = divideDecimalStringBy16(number)
-        hex.append(hexAlphabet[r])
-        number = q
-    }
-
-    return String(hex.reversed())
-}
-
-private func divideDecimalStringBy16(_ decimal: String) -> (quotient: String, remainder: Int) {
-    var carry = 0
-    var quotient = ""
-    for ch in decimal {
-        let d = Int(String(ch)) ?? 0
-        let value = carry * 10 + d
-        let q = value / 16
-        let r = value % 16
-        if !(quotient.isEmpty && q == 0) { quotient.append(String(q)) }
-        carry = r
-    }
-    if quotient.isEmpty { quotient = "0" }
-    return (quotient, carry)
-}
 
 #if canImport(UIKit)
 import UIKit

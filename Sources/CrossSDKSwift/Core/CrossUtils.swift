@@ -13,6 +13,24 @@ import web3swift
 import Web3Core
 import CryptoSwift
 
+/// Errors that can occur in CrossUtils operations
+public enum CrossUtilsError: LocalizedError {
+    case invalidAddress(String)
+    case invalidAmount(String)
+    case conversionFailed(String)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .invalidAddress(let message):
+            return "Invalid address: \(message)"
+        case .invalidAmount(let message):
+            return "Invalid amount: \(message)"
+        case .conversionFailed(let message):
+            return "Conversion failed: \(message)"
+        }
+    }
+}
+
 /// Utility functions for data conversion and formatting
 public class CrossUtils {
 
@@ -48,15 +66,132 @@ public class CrossUtils {
         guard address.count > 10 else { return address }
         return "\(address.prefix(6))...\(address.suffix(4))"
     }
-
+    
+    // MARK: - Address Validation
+    
     /// Validate Ethereum address format
-    /// - Parameter address: Address to validate
-    /// - Returns: True if address is valid format
+    /// - Parameter address: Address string to validate
+    /// - Returns: True if valid Ethereum address format
     public func isValidAddress(_ address: String) -> Bool {
-        let pattern = "^0x[a-fA-F0-9]{40}$"
-        let regex = try? NSRegularExpression(pattern: pattern)
-        let range = NSRange(location: 0, length: address.utf16.count)
-        return regex?.firstMatch(in: address, options: [], range: range) != nil
+        let pattern = "^0x[0-9a-fA-F]{40}$"
+        return address.range(of: pattern, options: .regularExpression) != nil
+    }
+    
+    // MARK: - Hex Number Conversion
+    
+    /// Convert hex string to Decimal
+    /// - Parameter hex: Hex string (with or without 0x prefix)
+    /// - Returns: Decimal representation of the hex value
+    public func hexToDecimal(_ hex: String) -> Decimal {
+        let cleanHex = hex.hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
+        
+        // 빈 문자열이거나 "0"인 경우
+        if cleanHex.isEmpty || cleanHex == "0" {
+            return Decimal(0)
+        }
+        
+        // Hex를 decimal로 변환
+        var decimal = Decimal(0)
+        var multiplier = Decimal(1)
+        
+        for char in cleanHex.reversed() {
+            if let digit = Int(String(char), radix: 16) {
+                decimal += Decimal(digit) * multiplier
+                multiplier *= 16
+            } else {
+                // 잘못된 hex 문자가 있으면 0 반환
+                return Decimal(0)
+            }
+        }
+        
+        return decimal
+    }
+    
+    /// Convert decimal string to hex string
+    /// - Parameter decimal: Decimal string to convert
+    /// - Returns: Hex string representation
+    public func decimalStringToHex(_ decimal: String) -> String {
+        let digitsOnly = decimal.trimmingCharacters(in: CharacterSet(charactersIn: "0123456789").inverted)
+        if digitsOnly == "" || digitsOnly == "0" { return "0" }
+        var number = digitsOnly
+        var hex = ""
+        let hexAlphabet = Array("0123456789abcdef")
+        while number != "0" {
+            let (q, r) = divideDecimalStringBy16(number)
+            hex.append(hexAlphabet[r])
+            number = q
+        }
+
+        return String(hex.reversed())
+    }
+    
+    /// Helper function to divide decimal string by 16
+    /// - Parameter decimal: Decimal string to divide
+    /// - Returns: Tuple of quotient and remainder
+    private func divideDecimalStringBy16(_ decimal: String) -> (quotient: String, remainder: Int) {
+        var carry = 0
+        var quotient = ""
+        for ch in decimal {
+            let d = Int(String(ch)) ?? 0
+            let value = carry * 10 + d
+            let q = value / 16
+            let r = value % 16
+            if !(quotient.isEmpty && q == 0) { quotient.append(String(q)) }
+            carry = r
+        }
+        if quotient.isEmpty { quotient = "0" }
+        return (quotient, carry)
+    }
+    
+    // MARK: - Smart Contract Data Encoding
+    
+    /// Encode ERC-20 transfer function call data
+    /// - Parameters:
+    ///   - to: Recipient address
+    ///   - amount: Transfer amount as string
+    ///   - decimals: Token decimals
+    /// - Returns: Encoded function call data
+    /// - Throws: CrossUtilsError if encoding fails
+    public func encodeERC20TransferData(to: String, amount: String, decimals: Int) throws -> String {
+        let selector = "a9059cbb"
+        let addressNoPrefix = String(to.dropFirst(2)).lowercased()
+        guard addressNoPrefix.count == 40 else { 
+            throw CrossUtilsError.invalidAddress("수신자 주소 형식이 올바르지 않습니다") 
+        }
+
+        let amountHex = try amountToUInt256Hex(amount, decimals: decimals)
+        let paddedAddress = addressNoPrefix.leftPadded(to: 64)
+        let paddedAmount = amountHex.leftPadded(to: 64)
+        return "0x" + selector + paddedAddress + paddedAmount
+    }
+    
+    /// Convert amount string to uint256 hex representation
+    /// - Parameters:
+    ///   - amount: Amount as decimal string
+    ///   - decimals: Number of decimal places
+    /// - Returns: Hex representation of the amount
+    /// - Throws: CrossUtilsError if conversion fails
+    public func amountToUInt256Hex(_ amount: String, decimals: Int) throws -> String {
+        let s = amount.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pattern = "^\\d*(?:\\.\\d*)?$"
+        guard s.range(of: pattern, options: .regularExpression) != nil, !s.isEmpty else {
+            throw CrossUtilsError.invalidAmount("금액 형식이 올바르지 않습니다")
+        }
+
+        let parts = s.split(separator: ".", omittingEmptySubsequences: false)
+        let intPart = parts.first.map(String.init) ?? "0"
+        let fracPart = parts.count > 1 ? String(parts[1]) : ""
+        if fracPart.count > decimals { 
+            throw CrossUtilsError.invalidAmount("소수 자릿수가 너무 큽니다") 
+        }
+        let paddedFrac = fracPart + String(repeating: "0", count: max(0, decimals - fracPart.count))
+
+        // 결합된 10진 정수 문자열 (앞의 0 제거)
+        let combined = (intPart + paddedFrac).drop { $0 == "0" }
+        let decimalString = combined.isEmpty ? "0" : String(combined)
+
+        // 10진 문자열 → 16진 문자열로 변환
+        return decimalStringToHex(decimalString)
     }
 
     // MARK: - String Conversion
@@ -567,32 +702,18 @@ public class CrossUtils {
     public func getBlockchain(for chain: CrossChain) -> Blockchain? {
         return chain.blockchain
     }
-    
-    /// Convert hex string to decimal
-    /// - Parameter hex: Hex string to convert (with or without 0x prefix)
-    /// - Returns: Decimal representation
-    public func hexToDecimal(_ hex: String) -> Decimal {
-        let cleanHex = hex.hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
-        
-        // 빈 문자열이거나 "0"인 경우
-        if cleanHex.isEmpty || cleanHex.allSatisfy({ $0 == "0" }) {
-            return Decimal(0)
-        }
-        
-        // Hex를 decimal로 변환
-        var decimal = Decimal(0)
-        var multiplier = Decimal(1)
-        
-        for char in cleanHex.reversed() {
-            if let digit = Int(String(char), radix: 16) {
-                decimal += Decimal(digit) * multiplier
-                multiplier *= 16
-            } else {
-                // 잘못된 hex 문자가 있으면 0 반환
-                return Decimal(0)
-            }
-        }
-        
-        return decimal
+}
+
+// MARK: - String Extensions
+
+private extension String {
+    /// Left pad string with specified character
+    /// - Parameters:
+    ///   - length: Target length
+    ///   - char: Character to pad with (default: "0")
+    /// - Returns: Left-padded string
+    func leftPadded(to length: Int, with char: Character = "0") -> String {
+        if count >= length { return self }
+        return String(repeating: String(char), count: length - count) + self
     }
 }

@@ -122,7 +122,7 @@ public enum ChainPresets {
             imageId: "CROSS"
         ),
         Chain(
-            chainName: "BNB Mainnet",
+            chainName: "BNB Smart Chain (Mainnet) ",
             chainNamespace: "eip155",
             chainReference: "56",
             requiredMethods: [],
@@ -134,7 +134,7 @@ public enum ChainPresets {
             imageId: "BSC"
         ),
         Chain(
-            chainName: "BSC Testnet",
+            chainName: "BNB Smart Chain (Testnet)",
             chainNamespace: "eip155",
             chainReference: "97",
             requiredMethods: [],
