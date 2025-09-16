@@ -237,19 +237,29 @@ let tokenBalance = try await CrossSDKSwift.shared.fetchERC20Balance(
 
 ### 6. 스마트 컨트랙트
 ```swift
-// 컨트랙트 읽기
-let result = try await CrossSDKSwift.shared.readContract(
-    address: "0xContractAddress",
-    functionName: "balanceOf",
-    parameters: ["0xUserAddress"]
+// 컨트랙트 읽기 (view 함수)
+let balanceHex = try await CrossSDKSwift.shared.transactionManager.readContract(
+    contractAddress: "0xContractAddress",
+    methodName: "balanceOf",
+    abi: "balanceOf(address)",
+    params: ["0xUserAddress"]
 )
 
-// 컨트랙트 쓰기
+// 컨트랙트 쓰기 (state 변경 함수)
 let txHash = try await CrossSDKSwift.shared.writeContract(
-    address: "0xContractAddress", 
-    functionName: "transfer",
-    parameters: ["0xRecipient", "1000000000000000000"],
+    contractAddress: "0xContractAddress",
+    methodName: "transfer",
+    abi: "transfer(address,uint256)",
+    params: ["0xRecipient", "1000000000000000000"],
     value: "0"
+)
+
+// 파라미터 없는 함수 호출
+let txHash = try await CrossSDKSwift.shared.writeContract(
+    contractAddress: "0xContractAddress",
+    methodName: "mint",
+    abi: "mint()",
+    value: "0.01" // payable 함수인 경우 ETH 전송
 )
 ```
 

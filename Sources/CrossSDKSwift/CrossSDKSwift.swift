@@ -170,6 +170,76 @@ public final class CrossSDKSwift: ObservableObject {
     public func sendTransaction(_ params: CrossTransactionParams, customData: CustomData? = nil) async throws -> String {
         return try await transactionManager.sendTransaction(params, customData: customData)
     }
+    
+    /// Write to smart contract (call contract function that modifies state)
+    /// - Parameters:
+    ///   - contractAddress: Contract address
+    ///   - methodName: Method name for logging
+    ///   - abi: ABI signature (e.g., "transfer(address,uint256)")
+    ///   - params: Function parameters
+    ///   - value: ETH value to send (default: "0")
+    ///   - gasLimit: Gas limit (optional)
+    ///   - gasPrice: Gas price (optional)
+    ///   - type: Transaction type (default: .dynamic)
+    ///   - customData: Custom metadata
+    /// - Returns: Transaction hash
+    public func writeContract(
+        contractAddress: String,
+        methodName: String,
+        abi: String,
+        params: [String] = [],
+        value: String = "0",
+        gasLimit: String? = nil,
+        gasPrice: String? = nil,
+        type: TransactionType = .dynamic,
+        customData: CustomData? = nil
+    ) async throws -> String {
+        return try await transactionManager.writeContract(
+            contractAddress: contractAddress,
+            methodName: methodName,
+            abi: abi,
+            params: params,
+            value: value,
+            gasLimit: gasLimit,
+            gasPrice: gasPrice,
+            type: type,
+            customData: customData
+        )
+    }
+    
+    /// Write to smart contract (no parameters version)
+    /// - Parameters:
+    ///   - contractAddress: Contract address
+    ///   - methodName: Method name for logging
+    ///   - abi: ABI signature (e.g., "mint()")
+    ///   - value: ETH value to send (default: "0")
+    ///   - gasLimit: Gas limit (optional)
+    ///   - gasPrice: Gas price (optional)
+    ///   - type: Transaction type (default: .dynamic)
+    ///   - customData: Custom metadata
+    /// - Returns: Transaction hash
+    public func writeContract(
+        contractAddress: String,
+        methodName: String,
+        abi: String,
+        value: String = "0",
+        gasLimit: String? = nil,
+        gasPrice: String? = nil,
+        type: TransactionType = .dynamic,
+        customData: CustomData? = nil
+    ) async throws -> String {
+        return try await transactionManager.writeContract(
+            contractAddress: contractAddress,
+            methodName: methodName,
+            abi: abi,
+            params: [],
+            value: value,
+            gasLimit: gasLimit,
+            gasPrice: gasPrice,
+            type: type,
+            customData: customData
+        )
+    }
 
     // MARK: - Advanced Signing Methods
 
