@@ -4,9 +4,9 @@ actor ENSRegistryContract {
 
     private let address: String
     private let projectId: String
-    private let httpClient: HTTPClient
+    private let httpClient: HTTPClientProtocol
 
-    init(address: String, projectId: String, httpClient: HTTPClient) {
+    init(address: String, projectId: String, httpClient: HTTPClientProtocol) {
         self.address = address
         self.projectId = projectId
         self.httpClient = httpClient

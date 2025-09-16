@@ -5,9 +5,9 @@ actor ENSResolverContract {
     private let address: String
     private let projectId: String
     private let chainId: String
-    private let httpClient: HTTPClient
+    private let httpClient: HTTPClientProtocol
 
-    init(address: String, projectId: String, chainId: String, httpClient: HTTPClient) {
+    init(address: String, projectId: String, chainId: String, httpClient: HTTPClientProtocol) {
         self.address = address
         self.projectId = projectId
         self.chainId = chainId

@@ -3,11 +3,11 @@ import Foundation
 public actor ENSResolver {
 
     private let projectId: String
-    private let httpClient: HTTPClient
+    private let httpClient: HTTPClientProtocol
     private let registry: ENSRegistryContract
     private let crypto: CryptoProvider
 
-    init(projectId: String, httpClient: HTTPClient, registry: ENSRegistryContract, crypto: CryptoProvider) {
+    init(projectId: String, httpClient: HTTPClientProtocol, registry: ENSRegistryContract, crypto: CryptoProvider) {
         self.projectId = projectId
         self.httpClient = httpClient
         self.registry = registry

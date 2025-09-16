@@ -1,7 +1,7 @@
 import Foundation
 
 actor PushRegisterService {
-    private let httpClient: HTTPClient
+    private let httpClient: HTTPClientProtocol
     private let projectId: String
     private let logger: ConsoleLogging
     private let environment: APNSEnvironment
@@ -15,7 +15,7 @@ actor PushRegisterService {
         case registrationFailed
     }
 
-    init(httpClient: HTTPClient,
+    init(httpClient: HTTPClientProtocol,
          projectId: String,
          clientIdStorage: ClientIdStoring,
          pushAuthenticator: PushAuthenticating,

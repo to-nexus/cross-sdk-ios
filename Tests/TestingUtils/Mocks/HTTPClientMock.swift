@@ -1,7 +1,7 @@
 import Foundation
 @testable import HTTPClient
 
-public final class HTTPClientMock<T: Decodable>: HTTPClient {
+public final class HTTPClientMock<T: Decodable>: HTTPClientProtocol {
     private let object: T
 
     public init(object: T) {

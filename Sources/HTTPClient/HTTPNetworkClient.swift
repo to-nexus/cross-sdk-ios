@@ -1,6 +1,6 @@
 import Foundation
 
-public actor HTTPNetworkClient: HTTPClient {
+public actor HTTPNetworkClient: HTTPClientProtocol {
 
     private var host: String
 
