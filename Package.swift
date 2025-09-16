@@ -174,8 +174,7 @@ let package = Package(
             resources: [
                 .process("Resources/Assets.xcassets"),
                 .copy("PackageConfig.json")
-            ],
-            platforms: [.iOS]
+            ]
         ),
         .target(
             name: "AppKitUI",
@@ -185,13 +184,11 @@ let package = Package(
             path: "Sources/AppKitUI",
             resources: [
                 .process("Resources/Assets.xcassets")
-            ],
-            platforms: [.iOS]
+            ]
         ),
         .target(
             name: "AppKitBackport",
-            path: "Sources/AppKitBackport",
-            platforms: [.iOS]
+            path: "Sources/AppKitBackport"
         ),
         .target(
             name: "CrossSDKSwift",
