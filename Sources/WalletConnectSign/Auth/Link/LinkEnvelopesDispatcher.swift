@@ -1,4 +1,5 @@
 
+import Foundation
 #if os(iOS)
 import UIKit
 #endif
@@ -75,6 +76,7 @@ final class LinkEnvelopesDispatcher {
                 }
                 DispatchQueue.main.async { [weak self] in
                     self?.logger.debug("Will open universal link")
+                    #if os(iOS)
                     UIApplication.shared.open(envelopeUrl, options: [.universalLinksOnly: true]) { success in
                         if success {
                             continuation.resume(returning: ())
@@ -82,6 +84,9 @@ final class LinkEnvelopesDispatcher {
                             continuation.resume(throwing: Errors.failedToOpenUniversalLink(envelopeUrl.absoluteString))
                         }
                     }
+                    #else
+                    continuation.resume(returning: ())
+                    #endif
                 }
             }
 
@@ -109,6 +114,7 @@ final class LinkEnvelopesDispatcher {
             }
             DispatchQueue.main.async { [unowned self] in
                 logger.debug("Will open universal link")
+                #if os(iOS)
                 UIApplication.shared.open(envelopeUrl, options: [.universalLinksOnly: true]) { success in
                     if success {
                         continuation.resume(returning: ())
@@ -116,6 +122,9 @@ final class LinkEnvelopesDispatcher {
                         continuation.resume(throwing: Errors.failedToOpenUniversalLink(envelopeUrl.absoluteString))
                     }
                 }
+                #else
+                continuation.resume(returning: ())
+                #endif
             }
         }
 
@@ -221,6 +230,11 @@ final class LinkEnvelopesDispatcher {
     }
 
     func isRunningTests() -> Bool {
-        return ProcessInfo.processInfo.arguments.contains("isTesting")
+        #if DEBUG
+        return Foundation.ProcessInfo.processInfo.arguments.contains("isTesting") ||
+               Foundation.ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        #else
+        return false
+        #endif
     }
 }

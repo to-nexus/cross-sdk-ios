@@ -3,7 +3,11 @@
 // import struct CoinbaseWalletSDK.ActionError
 import Combine
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 // Web3 Modal Client
 ///
