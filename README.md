@@ -67,12 +67,6 @@ dependencies: [
 ]
 ```
 
-### CocoaPods
-Podfile에 추가:
-```ruby
-pod 'cross-sdk-swift'
-```
-
 ## 초기 설정
 
 ### WalletConnect Project ID
