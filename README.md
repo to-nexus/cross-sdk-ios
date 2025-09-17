@@ -351,15 +351,3 @@ do {
 swift test
 swift test --filter CrossUtilsTests
 ```
-
-## License
-
-Apache 2.0
-
-## 기여
-
-1. Fork the Project
-2. Create Feature Branch (`git checkout -b feature/Feature`)
-3. Commit Changes (`git commit -m 'Add Feature'`)
-4. Push to Branch (`git push origin feature/Feature`)
-5. Open Pull Request
