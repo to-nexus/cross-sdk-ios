@@ -34,11 +34,10 @@ jobs:
         echo "⚠️ Skipping build/test due to macOS compatibility issues"
         echo "📦 Proceeding directly to XCFramework build for iOS"
     
-    - name: Skip XCFramework Build (Dependency Issues)
+    - name: Build Distribution Package
       run: |
-        echo "⚠️ Skipping XCFramework build due to secp256k1_bindings dependency issues"
-        echo "📦 CrossSDKSwift is available via Swift Package Manager"
-        echo "🎯 Focus: SPM deployment for immediate use"
+        chmod +x scripts/build_xcframework.sh
+        ./scripts/build_xcframework.sh
     
     - name: Get version from tag
       id: version
@@ -50,6 +49,8 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
+        files: |
+          CrossSDKSwift-v${{ steps.version.outputs.VERSION }}-Distribution.zip
         name: CrossSDKSwift ${{ steps.version.outputs.VERSION }}
         body: |
           ## CrossSDKSwift ${{ steps.version.outputs.VERSION }}
@@ -68,11 +69,15 @@ jobs:
           pod 'cross-sdk-swift', '~> ${{ steps.version.outputs.VERSION }}'
           ```
           
-          ### ⚠️ XCFramework 지원
-          XCFramework는 암호화 라이브러리 의존성 문제로 인해 현재 지원되지 않습니다.
-          **Swift Package Manager 사용을 권장합니다.**
+          ### 📦 배포 패키지
           
-          ### 📚 사용법
+          **CrossSDKSwift-v${{ steps.version.outputs.VERSION }}-Distribution.zip** 다운로드:
+          - 📚 설치 가이드 및 문서
+          - 💻 실제 사용 예제 코드  
+          - 📄 라이센스 및 변경로그
+          - ✅ 즉시 사용 가능한 코드 스니펫
+          
+          ### 📚 빠른 시작
           ```swift
           import CrossSDKSwift
           
@@ -81,11 +86,20 @@ jobs:
           
           // 지갑 연결
           try await CrossSDKSwift.shared.connect()
+          
+          // 유틸리티 사용
+          let isValid = CrossSDKSwift.shared.utils.isValidAddress("0x...")
+          let formatted = CrossSDKSwift.shared.utils.formatAddress("0x...")
           ```
           
-          ### 변경사항
+          ### ⚠️ 참고사항
           
-          전체 변경사항은 [CHANGELOG.md](https://github.com/to-nexus/cross-sdk-swift/blob/main/CHANGELOG.md)를 참고하세요.
+          XCFramework는 암호화 라이브러리 의존성 문제로 현재 지원되지 않습니다.
+          **Swift Package Manager**가 가장 안정적이고 권장되는 방법입니다.
+          
+          ### 📖 문서
+          
+          전체 문서와 변경사항은 [CHANGELOG.md](https://github.com/to-nexus/cross-sdk-swift/blob/main/CHANGELOG.md)를 참고하세요.
         draft: false
         prerelease: false
         generate_release_notes: true
