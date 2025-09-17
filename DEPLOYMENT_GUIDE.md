@@ -1,6 +1,6 @@
 # CrossSDKSwift 배포 가이드
 
-이 문서는 CrossSDKSwift를 SPM, CocoaPods, XCFramework로 배포하기 위한 단계별 가이드입니다.
+이 문서는 CrossSDKSwift를 SPM과 CocoaPods로 배포하기 위한 단계별 가이드입니다.
 
 ## 1. Swift Package Manager (SPM) 배포
 
@@ -87,71 +87,9 @@ pod search cross-sdk-swift
 pod install --repo-update
 ```
 
-## 3. XCFramework 배포
+## 3. 자동화 설정 (GitHub Actions)
 
-### 3.1 빌드 스크립트 생성
-`scripts/build_xcframework.sh` 파일 생성:
-
-```bash
-#!/bin/bash
-
-set -e
-
-FRAMEWORK_NAME="CrossSDKSwift"
-OUTPUT_DIR="./build"
-XCFRAMEWORK_PATH="$OUTPUT_DIR/$FRAMEWORK_NAME.xcframework"
-
-# 클린업
-rm -rf $OUTPUT_DIR
-mkdir -p $OUTPUT_DIR
-
-# iOS 시뮬레이터용 빌드
-xcodebuild archive \
-    -scheme $FRAMEWORK_NAME \
-    -destination "generic/platform=iOS Simulator" \
-    -archivePath "$OUTPUT_DIR/ios-simulator.xcarchive" \
-    -sdk iphonesimulator \
-    SKIP_INSTALL=NO \
-    BUILD_LIBRARY_FOR_DISTRIBUTION=YES
-
-# iOS 디바이스용 빌드  
-xcodebuild archive \
-    -scheme $FRAMEWORK_NAME \
-    -destination "generic/platform=iOS" \
-    -archivePath "$OUTPUT_DIR/ios-device.xcarchive" \
-    -sdk iphoneos \
-    SKIP_INSTALL=NO \
-    BUILD_LIBRARY_FOR_DISTRIBUTION=YES
-
-# XCFramework 생성
-xcodebuild -create-xcframework \
-    -framework "$OUTPUT_DIR/ios-simulator.xcarchive/Products/Library/Frameworks/$FRAMEWORK_NAME.framework" \
-    -framework "$OUTPUT_DIR/ios-device.xcarchive/Products/Library/Frameworks/$FRAMEWORK_NAME.framework" \
-    -output "$XCFRAMEWORK_PATH"
-
-echo "✅ XCFramework created at: $XCFRAMEWORK_PATH"
-```
-
-### 3.2 실행 권한 부여 및 빌드
-```bash
-chmod +x scripts/build_xcframework.sh
-./scripts/build_xcframework.sh
-```
-
-### 3.3 GitHub Release에 XCFramework 첨부
-```bash
-# ZIP 파일 생성
-cd build
-zip -r CrossSDKSwift.xcframework.zip CrossSDKSwift.xcframework
-cd ..
-
-# GitHub Release에 수동으로 업로드하거나 GitHub CLI 사용
-gh release upload 1.0.0 build/CrossSDKSwift.xcframework.zip
-```
-
-## 4. 자동화 설정 (GitHub Actions)
-
-### 4.1 워크플로우 파일 생성
+### 3.1 워크플로우 파일 생성
 `.github/workflows/release.yml`:
 
 ```yaml
@@ -174,20 +112,14 @@ jobs:
       with:
         xcode-version: '15.0'
     
-    - name: Build XCFramework
+    - name: Validate Package
       run: |
-        chmod +x scripts/build_xcframework.sh
-        ./scripts/build_xcframework.sh
-    
-    - name: Create ZIP
-      run: |
-        cd build
-        zip -r CrossSDKSwift.xcframework.zip CrossSDKSwift.xcframework
+        swift package resolve
+        swift package dump-package > /dev/null
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: build/CrossSDKSwift.xcframework.zip
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -225,12 +157,6 @@ GitHub 저장소 → Settings → Secrets and variables → Actions:
 - [ ] `pod trunk push` 실행
 - [ ] CocoaPods에서 검색 확인
 
-### XCFramework 배포 체크리스트
-- [ ] 빌드 스크립트 실행
-- [ ] XCFramework 생성 확인
-- [ ] ZIP 파일 생성
-- [ ] GitHub Release에 첨부
-- [ ] 수동 설치 테스트
 
 ## 6. 사용자 가이드 업데이트
 
@@ -250,10 +176,6 @@ dependencies: [
 pod 'cross-sdk-swift'
 ```
 
-### XCFramework
-1. [Releases](https://github.com/to-nexus/cross-sdk-swift/releases)에서 `CrossSDKSwift.xcframework.zip` 다운로드
-2. 압축 해제 후 프로젝트에 드래그 앤 드롭
-3. Target → General → Frameworks, Libraries, and Embedded Content에서 "Embed & Sign" 선택
 ```
 
 ## 7. 버전 관리 전략
@@ -273,8 +195,7 @@ pod 'cross-sdk-swift'
 
 ### 일반적인 문제들
 1. **CocoaPods 배포 실패**: 의존성 문제 확인
-2. **XCFramework 빌드 실패**: Xcode 버전 확인
-3. **SPM 설치 실패**: Git 태그 확인
+2. **SPM 설치 실패**: Git 태그 확인
 
 ### 디버깅 명령어
 ```bash

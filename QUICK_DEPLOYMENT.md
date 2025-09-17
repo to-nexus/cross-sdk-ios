@@ -16,7 +16,7 @@
 - ✅ Git 태그 생성 및 푸시
 
 ### 2단계: GitHub Actions 완료 대기
-- GitHub에서 자동으로 XCFramework 빌드
+- GitHub에서 자동으로 릴리즈 생성
 - GitHub Release 자동 생성
 - 진행 상황: https://github.com/to-nexus/cross-sdk-swift/actions
 
@@ -44,15 +44,15 @@ dependencies: [
 pod search cross-sdk-swift
 ```
 
-### XCFramework 배포 확인
-- GitHub Releases에서 `CrossSDKSwift.xcframework.zip` 다운로드 가능한지 확인
+### 배포 확인
+- GitHub Releases에서 릴리즈가 생성되었는지 확인
 
 ## 🔧 현재 배포 상태
 
 ### ✅ 준비 완료
 - [x] Package.swift (SPM)
 - [x] cross-sdk-swift.podspec (CocoaPods) - 검증 완료
-- [x] XCFramework 빌드 스크립트
+- [x] 배포 패키지 스크립트
 - [x] GitHub Actions 워크플로우
 - [x] 릴리즈 자동화 스크립트
 
@@ -62,7 +62,6 @@ pod search cross-sdk-swift
 |-----------|------|--------|
 | **SPM** | ✅ 준비완료 | `./scripts/release.sh 1.0.0` |
 | **CocoaPods** | ✅ 준비완료 | `pod trunk push cross-sdk-swift.podspec --allow-warnings` |
-| **XCFramework** | ✅ 자동화됨 | GitHub Actions에서 자동 생성 |
 
 ## 🎯 다음 릴리즈 준비사항
 
@@ -86,10 +85,9 @@ pod search cross-sdk-swift
    pod spec lint cross-sdk-swift.podspec --verbose
    ```
 
-2. **XCFramework 빌드 실패**
-   ```bash
-   ./scripts/build_xcframework.sh
-   ```
+2. **GitHub Actions 실패**
+   - Actions 탭에서 로그 확인
+   - 필요시 태그 재생성
 
 3. **Git 태그 충돌**
    ```bash
@@ -110,21 +108,21 @@ git push origin 1.0.0
 pod trunk push cross-sdk-swift.podspec --allow-warnings
 ```
 
-#### XCFramework만 빌드
+#### 배포 패키지만 생성
 ```bash
 ./scripts/build_xcframework.sh
-# 수동으로 GitHub Release에 업로드
+# 문서 패키지 생성
 ```
 
 ## 📊 배포 후 확인사항
 
 - [ ] GitHub Release 생성됨
-- [ ] XCFramework ZIP 파일 첨부됨
+- [ ] 릴리즈 노트 생성됨
 - [ ] CocoaPods에서 검색 가능
 - [ ] SPM으로 설치 가능
 - [ ] 예제 프로젝트에서 새 버전 동작 확인
 
 ---
 
-**현재 CrossSDKSwift는 모든 배포 방법이 준비되어 있습니다!** 
-`./scripts/release.sh 1.0.0` 명령어 하나로 SPM과 XCFramework 배포가 완료되며, CocoaPods는 한 번의 추가 명령어로 배포할 수 있습니다.
+**현재 CrossSDKSwift는 SPM과 CocoaPods 배포가 준비되어 있습니다!** 
+`./scripts/release.sh 1.0.0` 명령어 하나로 SPM 배포가 완료되며, CocoaPods는 한 번의 추가 명령어로 배포할 수 있습니다.

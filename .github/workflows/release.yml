@@ -29,15 +29,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-spm-
     
-    - name: Skip Build and Test (Focus on XCFramework)
+    - name: Validate Package
       run: |
-        echo "⚠️ Skipping build/test due to macOS compatibility issues"
-        echo "📦 Proceeding directly to XCFramework build for iOS"
-    
-    - name: Build Distribution Package
-      run: |
-        chmod +x scripts/build_xcframework.sh
-        ./scripts/build_xcframework.sh
+        echo "✅ Validating Swift Package Manager compatibility"
+        swift package resolve
+        swift package dump-package > /dev/null
+        echo "📦 Package validation completed successfully"
     
     - name: Get version from tag
       id: version
@@ -49,8 +46,6 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          CrossSDKSwift-v${{ steps.version.outputs.VERSION }}-Distribution.zip
         name: CrossSDKSwift ${{ steps.version.outputs.VERSION }}
         body: |
           ## CrossSDKSwift ${{ steps.version.outputs.VERSION }}
@@ -69,14 +64,6 @@ jobs:
           pod 'cross-sdk-swift', '~> ${{ steps.version.outputs.VERSION }}'
           ```
           
-          ### 📦 배포 패키지
-          
-          **CrossSDKSwift-v${{ steps.version.outputs.VERSION }}-Distribution.zip** 다운로드:
-          - 📚 설치 가이드 및 문서
-          - 💻 실제 사용 예제 코드  
-          - 📄 라이센스 및 변경로그
-          - ✅ 즉시 사용 가능한 코드 스니펫
-          
           ### 📚 빠른 시작
           ```swift
           import CrossSDKSwift
@@ -91,11 +78,6 @@ jobs:
           let isValid = CrossSDKSwift.shared.utils.isValidAddress("0x...")
           let formatted = CrossSDKSwift.shared.utils.formatAddress("0x...")
           ```
-          
-          ### ⚠️ 참고사항
-          
-          XCFramework는 암호화 라이브러리 의존성 문제로 현재 지원되지 않습니다.
-          **Swift Package Manager**가 가장 안정적이고 권장되는 방법입니다.
           
           ### 📖 문서
           
