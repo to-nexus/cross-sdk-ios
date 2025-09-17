@@ -34,10 +34,11 @@ jobs:
         echo "⚠️ Skipping build/test due to macOS compatibility issues"
         echo "📦 Proceeding directly to XCFramework build for iOS"
     
-    - name: Build XCFramework
+    - name: Skip XCFramework Build (Dependency Issues)
       run: |
-        chmod +x scripts/build_xcframework.sh
-        ./scripts/build_xcframework.sh
+        echo "⚠️ Skipping XCFramework build due to secp256k1_bindings dependency issues"
+        echo "📦 CrossSDKSwift is available via Swift Package Manager"
+        echo "🎯 Focus: SPM deployment for immediate use"
     
     - name: Get version from tag
       id: version
@@ -49,15 +50,13 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          build/CrossSDKSwift.xcframework.zip
         name: CrossSDKSwift ${{ steps.version.outputs.VERSION }}
         body: |
           ## CrossSDKSwift ${{ steps.version.outputs.VERSION }}
           
-          ### 설치 방법
+          ### 🚀 설치 방법
           
-          #### Swift Package Manager
+          #### Swift Package Manager (권장)
           ```swift
           dependencies: [
               .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "${{ steps.version.outputs.VERSION }}")
@@ -69,10 +68,20 @@ jobs:
           pod 'cross-sdk-swift', '~> ${{ steps.version.outputs.VERSION }}'
           ```
           
-          #### XCFramework
-          1. `CrossSDKSwift.xcframework.zip` 다운로드
-          2. 압축 해제 후 프로젝트에 추가
-          3. "Embed & Sign" 설정
+          ### ⚠️ XCFramework 지원
+          XCFramework는 암호화 라이브러리 의존성 문제로 인해 현재 지원되지 않습니다.
+          **Swift Package Manager 사용을 권장합니다.**
+          
+          ### 📚 사용법
+          ```swift
+          import CrossSDKSwift
+          
+          // 초기화
+          CrossSDKSwift.shared.initialize(projectId: "your-project-id")
+          
+          // 지갑 연결
+          try await CrossSDKSwift.shared.connect()
+          ```
           
           ### 변경사항
           
