@@ -1,5 +1,5 @@
 import Foundation
-@testable import HTTPClient
+import HTTPClient
 
 public final class HTTPClientMock<T: Decodable>: HTTPClientProtocol {
     private let object: T
@@ -8,8 +8,8 @@ public final class HTTPClientMock<T: Decodable>: HTTPClientProtocol {
         self.object = object
     }
 
-    public func request<T>(_ type: T.Type, at service: HTTPService) async throws -> T where T: Decodable {
-        return object as! T
+    public func request<U>(_ type: U.Type, at service: HTTPService) async throws -> U where U: Decodable {
+        return object as! U
     }
 
     public func request(service: HTTPService) async throws {

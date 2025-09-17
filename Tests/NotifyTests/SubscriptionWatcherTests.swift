@@ -2,6 +2,9 @@ import Foundation
 import XCTest
 import TestingUtils
 @testable import WalletConnectNotify
+#if canImport(UIKit)
+import UIKit
+#endif
 
 class SubscriptionWatcherTests: XCTestCase {
 
@@ -49,7 +52,9 @@ class SubscriptionWatcherTests: XCTestCase {
 
         try await sut.start()
 
+        #if canImport(UIKit)
         await mockNotificationCenter.post(name: UIApplication.willEnterForegroundNotification)
+        #endif
 
         await fulfillment(of: [watchSubscriptionsExpectation], timeout: 0.5)
     }
