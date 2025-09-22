@@ -255,6 +255,9 @@ public enum CrossSDKError: Error, LocalizedError {
     case invalidChain
     case requestExpired
     case invalidURL
+    case receiptPollingTimeout
+    case invalidReceiptData
+    case rpcRequestFailed(String)
 
     public var errorDescription: String? {
         switch self {
@@ -270,6 +273,12 @@ public enum CrossSDKError: Error, LocalizedError {
             return "Connection request has expired"
         case .invalidURL:
             return "Invalid URL for deeplink"
+        case .receiptPollingTimeout:
+            return "Transaction receipt polling timeout"
+        case .invalidReceiptData:
+            return "Invalid transaction receipt data"
+        case .rpcRequestFailed(let message):
+            return "RPC request failed: \(message)"
         }
     }
 }

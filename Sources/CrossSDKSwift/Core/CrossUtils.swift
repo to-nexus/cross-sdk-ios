@@ -591,6 +591,11 @@ public class CrossUtils {
     
     /// Encode a single value according to EIP-712
     private func encodeValue(_ type: String, value: AnyCodable, types: [String: [EIP712Type]]) -> Data {
+        // Handle null values - encode as zero bytes
+        if value.value is NSNull {
+            return Data(repeating: 0, count: 32)
+        }
+        
         // Handle arrays
         if type.hasSuffix("]") {
             // Array type - simplified handling
@@ -636,6 +641,9 @@ public class CrossUtils {
                 let cleanHex = hex.replacingOccurrences(of: "0x", with: "")
                 let data = Data(hexString: cleanHex)
                 return keccak256(data)
+            } else if value.value is NSNull {
+                // For null bytes, use keccak256 of empty data
+                return keccak256(Data())
             }
             return Data(repeating: 0, count: 32)
             

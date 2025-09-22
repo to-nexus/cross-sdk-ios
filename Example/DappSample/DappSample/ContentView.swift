@@ -90,7 +90,7 @@ struct ContentView: View {
         do {
             // 테스트용 주소 (실제로는 사용자 입력을 받아야 함)
             let testAddress = "0x742d35Cc6634C0532925a3b8D2C0b5C6C8b9c3f7"
-            let txHash = try await sdk.sendNative(to: testAddress, amount: "0.001")
+            let txHash: String = try await sdk.sendNative(to: testAddress, amount: "0.001")
             print("✅ ETH send successful: \(txHash)")
         } catch {
             print("❌ ETH send error: \(error.localizedDescription)")

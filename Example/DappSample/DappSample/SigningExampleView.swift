@@ -2,6 +2,29 @@ import SwiftUI
 import CrossSDKSwift
 import Commons
 
+enum EIP712InputMode: String, CaseIterable {
+    case api = "API"
+    case json = "JSON"
+    
+    var title: String {
+        switch self {
+        case .api:
+            return "API에서 가져오기"
+        case .json:
+            return "JSON 직접 입력"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .api:
+            return "서버 API에서 EIP-712 데이터를 가져옵니다"
+        case .json:
+            return "EIP-712 JSON을 직접 입력하여 서명합니다"
+        }
+    }
+}
+
 struct SigningExampleView: View {
     @State private var selectedSigningType: CrossSigningType = .personalSign
     @State private var messageToSign = "Hello, CrossSDKSwift!"
@@ -23,6 +46,12 @@ struct SigningExampleView: View {
     @State private var fetchedTypedData: EIP712TypedData?
     @State private var typedDataPreview: String = ""
     @State private var isFetchingTypedData: Bool = false
+    
+    // EIP-712: JSON 직접 입력
+    @State private var eip712InputMode: EIP712InputMode = .api
+    @State private var customEIP712JSON: String = ""
+    @State private var parsedTypedData: EIP712TypedData?
+    @State private var jsonParseError: String?
 
     var body: some View {
         NavigationView {
@@ -146,9 +175,63 @@ struct SigningExampleView: View {
 
     private var eip712APISection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("EIP-712 Typed Data v4")
+                .font(.headline)
+            
+            // 입력 모드 선택
+            eip712ModeSelector
+            
+            // 선택된 모드에 따른 입력 섹션
+            switch eip712InputMode {
+            case .api:
+                eip712APIInputSection
+            case .json:
+                eip712JSONInputSection
+            }
+        }
+    }
+    
+    private var eip712ModeSelector: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("입력 방식")
+                .font(.subheadline)
+                .fontWeight(.medium)
+            
+            HStack(spacing: 12) {
+                ForEach(EIP712InputMode.allCases, id: \.self) { mode in
+                    Button(action: {
+                        eip712InputMode = mode
+                        resetEIP712Data()
+                    }) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(mode.title)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            Text(mode.description)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(eip712InputMode == mode ? Color.blue.opacity(0.1) : Color(.systemGray6))
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(eip712InputMode == mode ? Color.blue : Color.clear, lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+    }
+    
+    private var eip712APIInputSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("EIP-712 데이터 (API)")
-                    .font(.headline)
+                Text("API에서 데이터 가져오기")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
                 Spacer()
                 Button(action: { Task { await fetchTypedDataFromAPI() } }) {
                     HStack(spacing: 6) {
@@ -158,6 +241,7 @@ struct SigningExampleView: View {
                 }
                 .disabled(isFetchingTypedData)
             }
+            
             if !typedDataPreview.isEmpty {
                 ScrollView {
                     Text(typedDataPreview)
@@ -169,9 +253,76 @@ struct SigningExampleView: View {
                 }
                 .frame(maxHeight: 200)
             } else if isFetchingTypedData == false && fetchedTypedData == nil {
-                Text("아직 데이터가 없습니다. ‘데이터 가져오기’를 눌러주세요.")
+                Text("아직 데이터가 없습니다. '데이터 가져오기'를 눌러주세요.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private var eip712JSONInputSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("EIP-712 JSON 입력")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    Button("예제 JSON") {
+                        loadSampleEIP712JSON()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                    
+                    // Button("Null 테스트") {
+                    //     loadNullTestEIP712JSON()
+                    // }
+                    // .font(.caption)
+                    // .foregroundColor(.orange)
+                }
+            }
+            
+            Text("EIP-712 Typed Data JSON을 입력하세요:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            // JSON 입력 텍스트 에디터
+            VStack(alignment: .leading, spacing: 8) {
+                TextEditor(text: $customEIP712JSON)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(minHeight: 200, maxHeight: 300)
+                    .padding(8)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(jsonParseError != nil ? Color.red : Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+                    .onChange(of: customEIP712JSON) { _ in
+                        validateAndParseJSON()
+                    }
+                
+                // JSON 파싱 에러 표시
+                if let error = jsonParseError {
+                    Text("JSON 파싱 에러: \(error)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 4)
+                }
+                
+                // 파싱 성공 시 미리보기
+                if parsedTypedData != nil && jsonParseError == nil {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("JSON 파싱 성공! 서명할 준비가 되었습니다.")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    .padding(.horizontal, 4)
+                }
             }
         }
     }
@@ -269,7 +420,12 @@ struct SigningExampleView: View {
         case .ethSign:
             return isValidHexData(customData)
         case .ethSignTypedDataV4:
-            return fetchedTypedData != nil
+            switch eip712InputMode {
+            case .api:
+                return fetchedTypedData != nil
+            case .json:
+                return parsedTypedData != nil && jsonParseError == nil
+            }
         }
     }
 
@@ -336,15 +492,32 @@ struct SigningExampleView: View {
                 )
 
             case .ethSignTypedDataV4:
-                guard let typed = fetchedTypedData else {
-                    throw CrossSigningError.invalidData("API 데이터가 없습니다. 먼저 데이터를 가져오세요")
+                let typedDataToSign: EIP712TypedData
+                
+                switch eip712InputMode {
+                case .api:
+                    guard let typed = fetchedTypedData else {
+                        throw CrossSigningError.invalidData("API 데이터가 없습니다. 먼저 데이터를 가져오세요")
+                    }
+                    typedDataToSign = typed
+                    
+                case .json:
+                    guard let typed = parsedTypedData else {
+                        throw CrossSigningError.invalidData("JSON 데이터가 유효하지 않습니다. JSON을 확인해주세요")
+                    }
+                    if jsonParseError != nil {
+                        throw CrossSigningError.invalidData("JSON 파싱 에러가 있습니다. JSON을 수정해주세요")
+                    }
+                    typedDataToSign = typed
                 }
+                
                 result = try await CrossSDKSwift.shared.signTypedDataV4(
-                    typedData: typed,
+                    typedData: typedDataToSign,
                     customData: CustomData(
                         object: [
-                            "description": "Universal EIP-712 typed data signature",
-                            "timestamp": ISO8601DateFormatter().string(from: Date())
+                            "description": "EIP-712 typed data signature (\(eip712InputMode.rawValue))",
+                            "timestamp": ISO8601DateFormatter().string(from: Date()),
+                            "inputMode": eip712InputMode.rawValue
                         ]
                     )
                 )
@@ -548,7 +721,7 @@ struct SigningExampleView: View {
             }
 
         case "eth_signTypedData_v4":
-            // 서명 요청에서 직접 typed data 추출
+            // 1순위: 서명 요청에서 직접 typed data 추출
             if let typedDataDict = params.first as? [String: Any],
                let typedDataJSON = try? JSONSerialization.data(withJSONObject: typedDataDict),
                let typed = try? JSONDecoder().decode(EIP712TypedData.self, from: typedDataJSON) {
@@ -563,9 +736,21 @@ struct SigningExampleView: View {
                     signature: result.signature,
                     typedData: typed
                 )
+            } else if let typed = parsedTypedData {
+                // 2순위: JSON 입력 모드에서 파싱된 데이터 사용
+                print("🔍 TypedData V4 verification with parsed JSON data")
+                isValid = utils.verifyTypedDataV4(
+                    signature: result.signature,
+                    typedData: typed,
+                    expectedAddress: expectedAddress
+                )
+                recoveredAddr = utils.recoverAddressFromTypedData(
+                    signature: result.signature,
+                    typedData: typed
+                )
             } else if let typed = fetchedTypedData {
-                // 폴백: API에서 가져온 데이터 사용
-                print("🔍 TypedData V4 verification with fetched data")
+                // 3순위: API에서 가져온 데이터 사용
+                print("🔍 TypedData V4 verification with fetched API data")
                 isValid = utils.verifyTypedDataV4(
                     signature: result.signature,
                     typedData: typed,
@@ -599,6 +784,227 @@ struct SigningExampleView: View {
             return !(v <= 0x1F || v == 0x7F)
         }
         return String(String.UnicodeScalarView(cleaned))
+    }
+
+    // MARK: - EIP-712 JSON Helpers
+    
+    private func resetEIP712Data() {
+        switch eip712InputMode {
+        case .api:
+            fetchedTypedData = nil
+            typedDataPreview = ""
+        case .json:
+            customEIP712JSON = ""
+            parsedTypedData = nil
+            jsonParseError = nil
+        }
+    }
+    
+    private func loadSampleEIP712JSON() {
+        let sampleJSON = """
+        {
+          "types": {
+            "EIP712Domain": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "version",
+                "type": "string"
+              },
+              {
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "name": "verifyingContract",
+                "type": "address"
+              }
+            ],
+            "Person": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "wallet",
+                "type": "address"
+              }
+            ],
+            "Mail": [
+              {
+                "name": "from",
+                "type": "Person"
+              },
+              {
+                "name": "to",
+                "type": "Person"
+              },
+              {
+                "name": "contents",
+                "type": "string"
+              }
+            ]
+          },
+          "primaryType": "Mail",
+          "domain": {
+            "name": "CrossSDKSwift Mail",
+            "version": "1",
+            "chainId": 1,
+            "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
+          },
+          "message": {
+            "from": {
+              "name": "Alice",
+              "wallet": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "to": {
+              "name": "Bob",
+              "wallet": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "contents": "Hello Bob! This is a test message from CrossSDKSwift."
+          }
+        }
+        """
+        
+        customEIP712JSON = sampleJSON
+        validateAndParseJSON()
+    }
+    
+    private func loadNullTestEIP712JSON() {
+        let nullTestJSON = """
+        {
+          "types": {
+            "EIP712Domain": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "version",
+                "type": "string"
+              },
+              {
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "name": "verifyingContract",
+                "type": "address"
+              }
+            ],
+            "ERC721Mint": [
+              {
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "name": "tokenID",
+                "type": "uint256"
+              },
+              {
+                "name": "data",
+                "type": "bytes"
+              },
+              {
+                "name": "nonce",
+                "type": "uint256"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256"
+              }
+            ]
+          },
+          "primaryType": "ERC721Mint",
+          "domain": {
+            "name": "0dba9dc6cc512f72e1a684f531f65150",
+            "version": "1",
+            "chainId": 612044,
+            "verifyingContract": "0xdae286eb6ffc3a36a5d6d5aca56fb0427c1a7c35"
+          },
+          "message": {
+            "data": null,
+            "deadline": "1758512723",
+            "nonce": "14",
+            "token": "0x756ff114493e25d56418b19835be8736c26fb3f1",
+            "tokenID": "0"
+          }
+        }
+        """
+        
+        customEIP712JSON = nullTestJSON
+        validateAndParseJSON()
+    }
+    
+    private func validateAndParseJSON() {
+        guard !customEIP712JSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            parsedTypedData = nil
+            jsonParseError = nil
+            return
+        }
+        
+        do {
+            // JSON 데이터로 변환
+            let jsonData = customEIP712JSON.data(using: .utf8) ?? Data()
+            
+            // 먼저 일반 JSON 파싱으로 구조 확인
+            if let jsonObject = try? JSONSerialization.jsonObject(with: jsonData, options: []) {
+                print("🔍 JSON 구조 확인:")
+                print("📝 JSON Object: \(jsonObject)")
+            }
+            
+            // EIP712TypedData로 디코딩 시도
+            let decoder = JSONDecoder()
+            let typedData = try decoder.decode(EIP712TypedData.self, from: jsonData)
+            
+            // 성공적으로 파싱됨
+            parsedTypedData = typedData
+            jsonParseError = nil
+            
+            print("✅ EIP-712 JSON 파싱 성공")
+            print("📝 Primary Type: \(typedData.primaryType)")
+            print("📝 Domain: \(typedData.domain)")
+            print("📝 Message keys: \(typedData.message.keys)")
+            
+            // null 값 확인
+            for (key, value) in typedData.message {
+                if value.value is NSNull {
+                    print("🔍 Found null value for key: \(key)")
+                } else {
+                    print("🔍 \(key): \(value.value) (type: \(type(of: value.value)))")
+                }
+            }
+            
+        } catch {
+            // 파싱 실패
+            parsedTypedData = nil
+            jsonParseError = error.localizedDescription
+            
+            print("❌ EIP-712 JSON 파싱 실패: \(error)")
+            
+            // 더 자세한 에러 정보
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .dataCorrupted(let context):
+                    print("❌ Data corrupted: \(context.debugDescription)")
+                    print("❌ Coding path: \(context.codingPath)")
+                case .keyNotFound(let key, let context):
+                    print("❌ Key not found: \(key)")
+                    print("❌ Context: \(context.debugDescription)")
+                case .typeMismatch(let type, let context):
+                    print("❌ Type mismatch: expected \(type)")
+                    print("❌ Context: \(context.debugDescription)")
+                    print("❌ Coding path: \(context.codingPath)")
+                case .valueNotFound(let type, let context):
+                    print("❌ Value not found: \(type)")
+                    print("❌ Context: \(context.debugDescription)")
+                @unknown default:
+                    print("❌ Unknown decoding error")
+                }
+            }
+        }
     }
 
     // MARK: - UI Sections

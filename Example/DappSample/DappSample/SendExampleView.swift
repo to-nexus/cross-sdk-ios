@@ -1,5 +1,6 @@
 import SwiftUI
 import CrossSDKSwift
+import SafariServices
 
 struct SendExampleView: View {
     @ObservedObject private var sdk = CrossSDKSwift.shared
@@ -12,6 +13,17 @@ struct SendExampleView: View {
     @State private var errorMessage: String?
     @State private var txHash: String?
     @State private var showResult: Bool = false
+    
+    // Receipt 폴링 관련 상태
+    @State private var isWaitingForReceipt: Bool = false
+    @State private var transactionReceipt: CrossTransactionReceipt?
+    @State private var receiptError: String?
+    
+    // Safari 관련 상태 - 간단한 구조체로 URL과 표시 상태를 함께 관리
+    @State private var safariPresentation: SafariPresentation? = nil
+    @State private var showURLAlert: Bool = false
+    @State private var alertURL: String = ""
+    
     
     // Balance fetching states
     @State private var currentBalance: String = "0"
@@ -35,10 +47,41 @@ struct SendExampleView: View {
             } message: {
                 if let error = errorMessage { Text(error) }
             }
+            .alert("블록 스캐너 URL", isPresented: $showURLAlert) {
+                Button("복사") {
+                    #if canImport(UIKit)
+                    UIPasteboard.general.string = alertURL
+                    #endif
+                }
+                Button("시스템 브라우저에서 열기") {
+                    if let url = URL(string: alertURL) {
+                        #if canImport(UIKit)
+                        UIApplication.shared.open(url)
+                        #endif
+                    }
+                }
+                Button("닫기", role: .cancel) { }
+            } message: {
+                Text(alertURL)
+            }
             .sheet(isPresented: $showResult) {
                 if let txHash = txHash {
-                    TxResultView(txHash: txHash)
+                    TxResultView(
+                        txHash: txHash,
+                        receipt: transactionReceipt,
+                        isWaitingForReceipt: isWaitingForReceipt,
+                        receiptError: receiptError
+                    )
                 }
+            }
+            .sheet(item: $safariPresentation) { presentation in
+                SimpleSafariView(url: presentation.url)
+                    .onAppear {
+                        print("🎯 Safari sheet appeared with URL: \(presentation.url.absoluteString)")
+                    }
+                    .onDisappear {
+                        print("🎯 Safari sheet disappeared")
+                    }
             }
             .safeAreaInset(edge: .bottom) { bottomSendBar }
         }
@@ -202,6 +245,8 @@ struct SendExampleView: View {
                         Button("상세 보기") { showResult = true }
                             .font(.caption)
                     }
+                    
+                    // 트랜잭션 해시
                     Text(txHash)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary)
@@ -210,9 +255,110 @@ struct SendExampleView: View {
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
+                    
+                    // Receipt 상태 표시
+                    receiptStatusView
                 }
             }
         }
+    }
+    
+    private var receiptStatusView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("트랜잭션 상태")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                // 블록 스캐너 버튼 (txHash가 있으면 항상 표시)
+                if txHash != nil {
+                    Menu {
+                        Button(action: openInBlockScanner) {
+                            Label("인앱 브라우저", systemImage: "safari")
+                        }
+                        Button(action: openInSystemBrowser) {
+                            Label("시스템 브라우저", systemImage: "globe")
+                        }
+                        Button(action: showURLInAlert) {
+                            Label("URL 확인", systemImage: "doc.on.doc")
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "safari")
+                            Text("블록스캔")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                }
+                
+                if isWaitingForReceipt {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                        Text("확인 중...")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                } else if let receipt = transactionReceipt {
+                    HStack(spacing: 4) {
+                        Image(systemName: receipt.receiptStatus == .success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(receipt.receiptStatus == .success ? .green : .red)
+                        Text(receipt.receiptStatus == .success ? "성공" : "실패")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(receipt.receiptStatus == .success ? .green : .red)
+                    }
+                } else if let error = receiptError {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("확인 실패")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.orange)
+                    }
+                }
+            }
+            
+            // Receipt 상세 정보
+            if let receipt = transactionReceipt {
+                VStack(alignment: .leading, spacing: 4) {
+                    if let blockNumber = receipt.blockNumber {
+                        Text("블록: \(blockNumber)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Text("가스 사용: \(receipt.gasUsed)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if receipt.receiptStatus == .success {
+                        Text("✅ 트랜잭션이 성공적으로 완료되었습니다")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else {
+                        Text("❌ 트랜잭션이 실패했습니다")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(.vertical, 4)
+            } else if let error = receiptError {
+                Text("오류: \(error)")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .padding(.vertical, 4)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6).opacity(0.5))
+        .cornerRadius(8)
     }
 
     private var canSend: Bool {
@@ -221,6 +367,74 @@ struct SendExampleView: View {
         guard !amountText.isEmpty, Decimal(string: amountText) != nil else { return false }
         if selectedTab == .erc20 { return currentERC20Contract() != nil }
         return true
+    }
+    
+    /// 현재 선택된 체인의 블록 스캐너 URL을 생성합니다
+    private func getBlockScannerURL(for txHash: String) -> URL? {
+        guard let selectedChain = sdk.chainManager.currentChain else { 
+            print("❌ No current chain selected")
+            return nil 
+        }
+        
+        let explorerURL = selectedChain.explorerUrl
+        let fullURL = "\(explorerURL)/tx/\(txHash)"
+        
+        print("🔗 Chain: \(selectedChain.name)")
+        print("🔗 Explorer URL: \(explorerURL)")
+        print("🔗 Full URL: \(fullURL)")
+        
+        return URL(string: fullURL)
+    }
+    
+    /// 인앱 브라우저에서 트랜잭션을 확인합니다
+    private func openInBlockScanner() {
+        guard let hash = txHash,
+              let url = getBlockScannerURL(for: hash) else { 
+            print("❌ Failed to generate block scanner URL")
+            return 
+        }
+        
+        // URL 유효성 추가 검사
+        guard url.scheme == "https" || url.scheme == "http" else {
+            print("❌ Invalid URL scheme: \(url.scheme ?? "nil")")
+            return
+        }
+        
+        print("🌐 Opening block scanner URL in Safari: \(url.absoluteString)")
+        print("🔍 URL components - scheme: \(url.scheme ?? "nil"), host: \(url.host ?? "nil"), path: \(url.path)")
+        
+        // 메인 스레드에서 UI 업데이트 확실히 하기
+        DispatchQueue.main.async {
+            print("🎯 Creating Safari presentation with URL...")
+            self.safariPresentation = SafariPresentation(url: url)
+            print("🎯 Safari presentation set: \(self.safariPresentation?.url.absoluteString ?? "nil")")
+        }
+    }
+    
+    /// 시스템 브라우저에서 트랜잭션을 확인합니다
+    private func openInSystemBrowser() {
+        guard let hash = txHash,
+              let url = getBlockScannerURL(for: hash) else { 
+            print("❌ Failed to generate block scanner URL")
+            return 
+        }
+        
+        print("🌐 Opening block scanner URL in system browser: \(url.absoluteString)")
+        #if canImport(UIKit)
+        UIApplication.shared.open(url)
+        #endif
+    }
+    
+    /// URL을 Alert로 표시합니다
+    private func showURLInAlert() {
+        guard let hash = txHash,
+              let url = getBlockScannerURL(for: hash) else { 
+            print("❌ Failed to generate block scanner URL")
+            return 
+        }
+        
+        alertURL = url.absoluteString
+        showURLAlert = true
     }
 
     private func performSend() {
@@ -232,11 +446,15 @@ struct SendExampleView: View {
         isLoading = true
         errorMessage = nil
         txHash = nil
+        transactionReceipt = nil
+        receiptError = nil
 
         do {
+            let tx: String
+            
             switch selectedTab {
             case .native:
-                let tx = try await sdk.sendNative(
+                tx = try await sdk.sendNative(
                     to: receiverAddress,
                     amount: amountText,
                     customData: CustomData(
@@ -246,14 +464,13 @@ struct SendExampleView: View {
                         ]
                     )
                 )
-                txHash = tx
             case .erc20:
                 guard let contract = currentERC20Contract() else {
                     throw SimpleError("이 체인에서는 ERC-20 전송을 지원하지 않습니다")
                 }
                 let data = try encodeERC20TransferData(to: receiverAddress, amount: amountText, decimals: 18)
                 let params = CrossTransactionParams(to: contract, value: "0", data: data)
-                let tx = try await sdk.sendTransaction(
+                tx = try await sdk.sendTransaction(
                     params,
                     customData: CustomData(
                         object: [
@@ -264,13 +481,31 @@ struct SendExampleView: View {
                         ]
                     )
                 )
-                txHash = tx
             }
+            
+            // 트랜잭션 해시 설정
+            txHash = tx
+            
+            // Receipt 폴링 시작
+            isLoading = false
+            isWaitingForReceipt = true
+            
+            do {
+                print("🔍 Starting receipt polling for tx: \(tx)")
+                let receipt = try await sdk.transactionManager.waitForTransactionReceipt(txHash: tx)
+                transactionReceipt = receipt
+                print("✅ Receipt received: \(receipt.receiptStatus)")
+            } catch {
+                receiptError = error.localizedDescription
+                print("❌ Receipt polling failed: \(error)")
+            }
+            
+            isWaitingForReceipt = false
+            
         } catch {
             errorMessage = error.localizedDescription
+            isLoading = false
         }
-
-        isLoading = false
     }
 
     private func nativeSymbol() -> String {
@@ -380,26 +615,144 @@ private struct TabPill: View {
 
 private struct TxResultView: View {
     let txHash: String
+    let receipt: CrossTransactionReceipt?
+    let isWaitingForReceipt: Bool
+    let receiptError: String?
+    
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("트랜잭션 해시")
-                        .font(.headline)
-                    Text(txHash)
-                        .font(.system(.caption, design: .monospaced))
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
-                        .textSelection(.enabled)
+                VStack(alignment: .leading, spacing: 20) {
+                    // 트랜잭션 해시 섹션
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("트랜잭션 해시")
+                            .font(.headline)
+                        Text(txHash)
+                            .font(.system(.caption, design: .monospaced))
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                            .textSelection(.enabled)
+                    }
+                    
+                    // Receipt 상태 섹션
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("트랜잭션 상태")
+                            .font(.headline)
+                        
+                        if isWaitingForReceipt {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("블록체인에서 트랜잭션 확인 중...")
+                                    .font(.subheadline)
+                                    .foregroundColor(.orange)
+                            }
+                            .padding()
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(8)
+                        } else if let receipt = receipt {
+                            receiptDetailView(receipt)
+                        } else if let error = receiptError {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Receipt 조회 실패")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.orange)
+                                }
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(8)
+                        } else {
+                            Text("Receipt 정보를 기다리는 중...")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                        }
+                    }
                 }
                 .padding()
             }
             .navigationTitle("전송 결과")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("완료") { dismiss() } } }
+        }
+    }
+    
+    private func receiptDetailView(_ receipt: CrossTransactionReceipt) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 상태 표시
+            HStack {
+                Image(systemName: receipt.receiptStatus == .success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundColor(receipt.receiptStatus == .success ? .green : .red)
+                    .font(.title2)
+                Text(receipt.receiptStatus == .success ? "트랜잭션 성공" : "트랜잭션 실패")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(receipt.receiptStatus == .success ? .green : .red)
+            }
+            
+            // 상세 정보
+            VStack(alignment: .leading, spacing: 8) {
+                if let blockNumber = receipt.blockNumber {
+                    DetailRow(label: "블록 번호", value: blockNumber)
+                }
+                if let blockHash = receipt.blockHash {
+                    DetailRow(label: "블록 해시", value: blockHash)
+                }
+                DetailRow(label: "가스 사용량", value: receipt.gasUsed)
+                DetailRow(label: "누적 가스", value: receipt.cumulativeGasUsed)
+                DetailRow(label: "보낸 주소", value: receipt.from)
+                if let to = receipt.to {
+                    DetailRow(label: "받는 주소", value: to)
+                }
+                if let contractAddress = receipt.contractAddress {
+                    DetailRow(label: "컨트랙트 주소", value: contractAddress)
+                }
+                
+                if !receipt.logs.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("이벤트 로그: \(receipt.logs.count)개")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Text("트랜잭션에서 \(receipt.logs.count)개의 이벤트가 발생했습니다")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(receipt.receiptStatus == .success ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
+        .cornerRadius(8)
+    }
+}
+
+private struct DetailRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.primary)
+                .textSelection(.enabled)
         }
     }
 }
@@ -427,3 +780,99 @@ extension View {
     func dismissKeyboardOnScroll() -> some View { self }
 }
 #endif
+
+// MARK: - Safari View
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        print("🎯 Creating Safari view for URL: \(url.absoluteString)")
+        let safari = SFSafariViewController(url: url)
+        safari.preferredControlTintColor = UIColor.systemBlue
+        safari.dismissButtonStyle = .close
+        safari.delegate = context.coordinator
+        return safari
+    }
+    
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {
+        // No updates needed
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
+    class Coordinator: NSObject, SFSafariViewControllerDelegate {
+        func safariViewController(_ controller: SFSafariViewController, didCompleteInitialLoad didLoadSuccessfully: Bool) {
+            print("🎯 Safari initial load completed: \(didLoadSuccessfully ? "Success" : "Failed")")
+        }
+        
+        func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+            print("🎯 Safari view controller finished")
+        }
+    }
+}
+
+// MARK: - Simple Safari View (direct presentation)
+struct SimpleSafariView: UIViewControllerRepresentable {
+    let url: URL
+    
+    func makeUIViewController(context: Context) -> UIViewController {
+        print("🎯 Creating simple Safari view for URL: \(url.absoluteString)")
+        let safari = SFSafariViewController(url: url)
+        safari.preferredControlTintColor = UIColor.systemBlue
+        safari.dismissButtonStyle = .close
+        safari.delegate = context.coordinator
+        return safari
+    }
+    
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        // No updates needed
+    }
+    
+    func makeCoordinator() -> SafariCoordinator {
+        SafariCoordinator()
+    }
+    
+    class SafariCoordinator: NSObject, SFSafariViewControllerDelegate {
+        func safariViewController(_ controller: SFSafariViewController, didCompleteInitialLoad didLoadSuccessfully: Bool) {
+            print("🎯 Simple Safari initial load completed: \(didLoadSuccessfully ? "Success" : "Failed")")
+        }
+        
+        func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+            print("🎯 Simple Safari view controller finished")
+        }
+    }
+}
+
+// MARK: - Safari Navigation View (for better presentation)
+struct SafariNavigationView: View {
+    let url: URL
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            SafariView(url: url)
+                .navigationTitle("블록 스캐너")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("완료") {
+                            dismiss()
+                        }
+                    }
+                }
+        }
+    }
+}
+
+// MARK: - Safari Presentation Model
+struct SafariPresentation: Identifiable {
+    let id = UUID()
+    let url: URL
+    
+    init(url: URL) {
+        self.url = url
+        print("🎯 SafariPresentation created with URL: \(url.absoluteString)")
+    }
+}

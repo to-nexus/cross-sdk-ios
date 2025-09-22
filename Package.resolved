@@ -77,9 +77,9 @@
         "package": "Web3swift",
         "repositoryURL": "https://github.com/web3swift-team/web3swift.git",
         "state": {
-          "branch": null,
-          "revision": "8275d1e33b3ed0df3f23961eb641c808e94d7c81",
-          "version": "3.3.1"
+          "branch": "develop",
+          "revision": "5cf13dec3ef933d8594d1529d87c7a62b4e3b3b8",
+          "version": null
         }
       }
     ]

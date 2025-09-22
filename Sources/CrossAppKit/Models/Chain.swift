@@ -92,7 +92,7 @@ public enum ChainPresets {
             events: [],
             token: .init(name: "CROSS", symbol: "CROSS", decimal: 18),
             rpcUrl: "https://testnet.crosstoken.io:22001",
-            blockExplorerUrl: "https://testnet.crossscan.io/",
+            blockExplorerUrl: "https://testnet.crossscan.io",
             imageId: "CROSS"
         )
     ]
@@ -118,7 +118,7 @@ public enum ChainPresets {
             events: [],
             token: .init(name: "CROSS", symbol: "CROSS", decimal: 18),
             rpcUrl: "https://testnet.crosstoken.io:22001",
-            blockExplorerUrl: "https://testnet.crossscan.io/",
+            blockExplorerUrl: "https://testnet.crossscan.io",
             imageId: "CROSS"
         ),
         Chain(
@@ -154,7 +154,7 @@ public enum ChainPresets {
             events: [],
             token: .init(name: "KAIA", symbol: "KAIA", decimal: 18),
             rpcUrl: "https://kaia-mainnet-ext.crosstoken.io/815b8a6e389b34a4f82cfd1e501692dee2f4e8f5",
-            blockExplorerUrl: "https://kaiascan.io/",
+            blockExplorerUrl: "https://kaiascan.io",
             imageId: "KAIA"
         ),
         Chain(
@@ -166,7 +166,7 @@ public enum ChainPresets {
             events: [],
             token: .init(name: "KAIA", symbol: "tKAIA", decimal: 18),
             rpcUrl: "https://kaia-testnet.crosstoken.io/fda0d5a47e2d0768e9329444295a3f0681fff365",
-            blockExplorerUrl: "https://kairos.io/",
+            blockExplorerUrl: "https://kairos.io",
             imageId: "KAIA"
         ),
         Chain(
@@ -178,7 +178,7 @@ public enum ChainPresets {
             events: [],
             token: .init(name: "Ether", symbol: "ETH", decimal: 18),
             rpcUrl: "https://eth-mainnet.crosstoken.io/fad29a23391f6d6e8fb41fb8eecbcca82343b378",
-            blockExplorerUrl: "https://etherscan.io/",
+            blockExplorerUrl: "https://etherscan.io",
             imageId: "Ethereum"
         ),
         Chain(
@@ -190,7 +190,7 @@ public enum ChainPresets {
             events: [],
             token: .init(name: "Sepolia", symbol: "ETH", decimal: 18),
             rpcUrl: "https://sepolia.crosstoken.io/8de52516c154dce8cc2ceaae39d657a1e1e74d2f",
-            blockExplorerUrl: "https://sepolia.etherscan.io/",
+            blockExplorerUrl: "https://sepolia.etherscan.io",
             imageId: "Ethereum"
         )
     ]

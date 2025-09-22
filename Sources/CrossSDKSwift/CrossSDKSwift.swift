@@ -171,6 +171,25 @@ public final class CrossSDKSwift: ObservableObject {
         return try await transactionManager.sendTransaction(params, customData: customData)
     }
     
+    /// Send a transaction and wait for receipt (with polling)
+    /// - Parameters:
+    ///   - params: Transaction parameters
+    ///   - customData: Optional custom metadata
+    /// - Returns: Transaction receipt after mining
+    public func sendTransaction(_ params: CrossTransactionParams, customData: CustomData? = nil) async throws -> CrossTransactionReceipt {
+        print("🚀 Sending transaction and waiting for receipt...")
+        
+        // 1. 트랜잭션 전송
+        let txHash = try await transactionManager.sendTransaction(params, customData: customData)
+        print("📝 Transaction sent with hash: \(txHash)")
+        
+        // 2. Receipt 폴링
+        let receipt = try await transactionManager.waitForTransactionReceipt(txHash: txHash)
+        print("📄 Receipt received for tx: \(txHash), status: \(receipt.receiptStatus)")
+        
+        return receipt
+    }
+    
     /// Write to smart contract (call contract function that modifies state)
     /// - Parameters:
     ///   - contractAddress: Contract address
@@ -207,39 +226,75 @@ public final class CrossSDKSwift: ObservableObject {
         )
     }
     
-    /// Write to smart contract (no parameters version)
+    /// Write to smart contract and wait for receipt (with polling)
     /// - Parameters:
     ///   - contractAddress: Contract address
     ///   - methodName: Method name for logging
-    ///   - abi: ABI signature (e.g., "mint()")
+    ///   - abi: ABI signature (e.g., "transfer(address,uint256)")
+    ///   - params: Function parameters
     ///   - value: ETH value to send (default: "0")
     ///   - gasLimit: Gas limit (optional)
     ///   - gasPrice: Gas price (optional)
     ///   - type: Transaction type (default: .dynamic)
     ///   - customData: Custom metadata
-    /// - Returns: Transaction hash
+    /// - Returns: Transaction receipt after mining
     public func writeContract(
         contractAddress: String,
         methodName: String,
         abi: String,
+        params: [String] = [],
         value: String = "0",
         gasLimit: String? = nil,
         gasPrice: String? = nil,
         type: TransactionType = .dynamic,
         customData: CustomData? = nil
-    ) async throws -> String {
-        return try await transactionManager.writeContract(
+    ) async throws -> CrossTransactionReceipt {
+        print("🚀 Writing contract and waiting for receipt...")
+        print("📝 Contract: \(contractAddress), Method: \(methodName)")
+        
+        // 1. 컨트랙트 호출 (트랜잭션 전송)
+        let txHash = try await transactionManager.writeContract(
             contractAddress: contractAddress,
             methodName: methodName,
             abi: abi,
-            params: [],
+            params: params,
             value: value,
             gasLimit: gasLimit,
             gasPrice: gasPrice,
             type: type,
             customData: customData
         )
+        print("📝 Contract call sent with hash: \(txHash)")
+        
+        // 2. Receipt 폴링
+        let receipt = try await transactionManager.waitForTransactionReceipt(txHash: txHash)
+        print("📄 Contract call receipt received for tx: \(txHash), status: \(receipt.receiptStatus)")
+        
+        return receipt
     }
+    
+    /// Send native coin to an address
+    /// - Parameters:
+    ///   - to: Recipient address
+    ///   - amount: Amount in native coin units (e.g., ETH)
+    ///   - customData: Optional custom metadata to include with the request
+    /// - Returns: Transaction hash
+    public func sendNative(to address: String, amount: String, customData: CustomData? = nil) async throws -> String {
+        let params = CrossTransactionParams(to: address, value: amount)
+        return try await transactionManager.sendTransaction(params, customData: customData)
+    }
+    
+    /// Send native coin to an address and wait for receipt (with polling)
+    /// - Parameters:
+    ///   - to: Recipient address
+    ///   - amount: Amount in native coin units (e.g., ETH)
+    ///   - customData: Optional custom metadata to include with the request
+    /// - Returns: Transaction receipt after mining
+    public func sendNative(to address: String, amount: String, customData: CustomData? = nil) async throws -> CrossTransactionReceipt {
+        let params = CrossTransactionParams(to: address, value: amount)
+        return try await sendTransaction(params, customData: customData) // 이미 receipt 버전을 호출
+    }
+    
 
     // MARK: - Advanced Signing Methods
 
@@ -298,21 +353,7 @@ public final class CrossSDKSwift: ObservableObject {
 
     // MARK: - Convenience Methods
 
-    /// Send native coin to an address
-    /// - Parameters:
-    ///   - to: Recipient address
-    ///   - amount: Amount in native coin units (e.g., ETH)
-    ///   - customData: Optional custom metadata to include with the request
-    /// - Returns: Transaction hash
-    public func sendNative(to address: String, amount: String, customData: CustomData? = nil) async throws -> String {
-        let params = CrossTransactionParams(to: address, value: amount)
-        return try await sendTransaction(params, customData: customData)
-    }
-
-    @available(*, deprecated, renamed: "sendNative(to:amount:)")
-    public func sendETH(to address: String, amount: String) async throws -> String {
-        return try await sendNative(to: address, amount: amount)
-    }
+    
     
     // MARK: - Balance Query Methods
     

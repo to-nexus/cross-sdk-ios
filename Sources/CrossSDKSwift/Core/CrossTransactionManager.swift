@@ -1,6 +1,8 @@
 import Foundation
 import CrossAppKit
 import Combine
+import WalletConnectUtils
+import WalletConnectSign
 
 /// 트랜잭션 및 서명을 관리하는 클래스
 public class CrossTransactionManager: ObservableObject {
@@ -14,6 +16,12 @@ public class CrossTransactionManager: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var pendingRequests: [String: (Result<String, Error>) -> Void] = [:]
+    
+    /// Receipt 폴링 작업들을 관리하는 딕셔너리
+    private var pollingTasks: [String: Task<CrossTransactionReceipt, Error>] = [:]
+    
+    /// 현재 폴링 중인 트랜잭션들의 상태
+    @Published public private(set) var pollingTransactions: [String: CrossTransactionReceiptStatus] = [:]
 
     // MARK: - Initialization
 
@@ -677,6 +685,297 @@ public class CrossTransactionManager: ObservableObject {
         if quotient.isEmpty { quotient = "0" }
         return (quotient, carry)
     }
+    
+    // MARK: - Receipt Polling Methods
+    
+    /// 트랜잭션 해시로 Receipt를 폴링하여 가져옵니다
+    /// - Parameters:
+    ///   - txHash: 트랜잭션 해시
+    ///   - config: 폴링 설정 (기본값 사용 가능)
+    /// - Returns: 트랜잭션 Receipt
+    public func waitForTransactionReceipt(
+        txHash: String,
+        config: CrossReceiptPollingConfig = .default
+    ) async throws -> CrossTransactionReceipt {
+        
+        print("🔍 Starting receipt polling for tx: \(txHash)")
+        
+        // 이미 폴링 중인 트랜잭션이면 기존 Task 반환
+        if let existingTask = pollingTasks[txHash] {
+            print("⏳ Already polling tx: \(txHash), waiting for existing task")
+            return try await existingTask.value
+        }
+        
+        // 델리게이트에 폴링 시작 알림
+        delegate?.receiptPollingDidStart(txHash: txHash)
+        
+        // 새로운 폴링 Task 생성
+        let pollingTask = Task<CrossTransactionReceipt, Error> {
+            return try await performReceiptPolling(txHash: txHash, config: config)
+        }
+        
+        // Task 저장
+        pollingTasks[txHash] = pollingTask
+        
+        // 상태 업데이트
+        await MainActor.run {
+            pollingTransactions[txHash] = .pending
+        }
+        
+        do {
+            let receipt = try await pollingTask.value
+            
+            // 완료 후 정리
+            pollingTasks.removeValue(forKey: txHash)
+            await MainActor.run {
+                pollingTransactions[txHash] = receipt.receiptStatus
+            }
+            
+            print("✅ Receipt polling completed for tx: \(txHash)")
+            
+            // 델리게이트에 성공 알림
+            delegate?.receiptDidReceive(txHash: txHash, receipt: receipt)
+            
+            return receipt
+            
+        } catch {
+            // 에러 발생 시 정리
+            pollingTasks.removeValue(forKey: txHash)
+            await MainActor.run {
+                if error is CancellationError {
+                    pollingTransactions.removeValue(forKey: txHash)
+                } else {
+                    pollingTransactions[txHash] = .timeout
+                }
+            }
+            
+            print("❌ Receipt polling failed for tx: \(txHash), error: \(error)")
+            
+            // 델리게이트에 실패 알림
+            delegate?.receiptPollingDidFail(txHash: txHash, error: error)
+            
+            throw error
+        }
+    }
+    
+    /// 실제 Receipt 폴링 로직
+    private func performReceiptPolling(
+        txHash: String,
+        config: CrossReceiptPollingConfig
+    ) async throws -> CrossTransactionReceipt {
+        
+        let startTime = Date()
+        var retryCount = 0
+        
+        while retryCount < config.maxRetries {
+            // 취소 확인
+            try Task.checkCancellation()
+            
+            // 타임아웃 확인
+            if Date().timeIntervalSince(startTime) > config.timeout {
+                throw CrossSDKError.receiptPollingTimeout
+            }
+            
+            do {
+                // Receipt 조회 시도
+                if let receipt = try await fetchTransactionReceipt(txHash: txHash) {
+                    print("📄 Receipt found for tx: \(txHash), status: \(receipt.receiptStatus)")
+                    return receipt
+                }
+                
+                print("⏳ Receipt not found yet for tx: \(txHash), retry: \(retryCount + 1)/\(config.maxRetries)")
+                
+            } catch {
+                print("⚠️ Error fetching receipt for tx: \(txHash), retry: \(retryCount + 1), error: \(error)")
+            }
+            
+            retryCount += 1
+            
+            // 마지막 시도가 아니면 대기
+            if retryCount < config.maxRetries {
+                try await Task.sleep(nanoseconds: UInt64(config.interval * 1_000_000_000))
+            }
+        }
+        
+        throw CrossSDKError.receiptPollingTimeout
+    }
+    
+    /// RPC를 통해 트랜잭션 Receipt를 조회합니다 (Web3 RPC 직접 사용)
+    private func fetchTransactionReceipt(txHash: String) async throws -> CrossTransactionReceipt? {
+        guard let selectedChain = AppKit.instance.getSelectedChain() else {
+            throw CrossSDKError.walletNotConnected
+        }
+        
+        print("🌐 Fetching receipt for tx: \(txHash) on chain: \(selectedChain.id) using Web3 RPC")
+        
+        do {
+            // Web3 RPC를 직접 사용하여 receipt 조회
+            let rpcUrl = selectedChain.rpcUrl
+            let result = try await Web3RPCService.getTransactionReceipt(rpcUrl: rpcUrl, txHash: txHash)
+            
+            // Receipt가 null이면 아직 마이닝되지 않음
+            guard let anyCodableResult = result else {
+                print("⏳ Receipt not found yet for tx: \(txHash)")
+                return nil
+            }
+            
+            // AnyCodable을 [String: Any]로 변환
+            guard let receiptData = anyCodableResult.value as? [String: Any] else {
+                print("⏳ Empty receipt data for tx: \(txHash)")
+                return nil
+            }
+            
+            // 빈 결과 확인
+            if receiptData.isEmpty {
+                print("⏳ Empty receipt data for tx: \(txHash)")
+                return nil
+            }
+            
+            // Receipt 파싱
+            let receipt = try parseTransactionReceipt(from: receiptData, txHash: txHash)
+            print("📄 Receipt found for tx: \(txHash), status: \(receipt.receiptStatus)")
+            return receipt
+            
+        } catch {
+            print("❌ Web3 RPC request failed for tx: \(txHash), error: \(error)")
+            throw CrossSDKError.rpcRequestFailed(error.localizedDescription)
+        }
+    }
+    
+    /// JSON 응답을 CrossTransactionReceipt로 파싱합니다
+    private func parseTransactionReceipt(
+        from json: [String: Any],
+        txHash: String
+    ) throws -> CrossTransactionReceipt {
+        
+        guard let from = json["from"] as? String,
+              let gasUsed = json["gasUsed"] as? String,
+              let cumulativeGasUsed = json["cumulativeGasUsed"] as? String,
+              let status = json["status"] as? String else {
+            throw CrossSDKError.invalidReceiptData
+        }
+        
+        // 로그 파싱
+        let logs: [CrossTransactionLog]
+        if let logsArray = json["logs"] as? [[String: Any]] {
+            logs = try logsArray.compactMap { logDict in
+                try parseTransactionLog(from: logDict)
+            }
+        } else {
+            logs = []
+        }
+        
+        return CrossTransactionReceipt(
+            transactionHash: txHash,
+            blockHash: json["blockHash"] as? String,
+            blockNumber: json["blockNumber"] as? String,
+            transactionIndex: json["transactionIndex"] as? String,
+            from: from,
+            to: json["to"] as? String,
+            gasUsed: gasUsed,
+            cumulativeGasUsed: cumulativeGasUsed,
+            contractAddress: json["contractAddress"] as? String,
+            logs: logs,
+            status: status
+        )
+    }
+    
+    /// JSON 응답을 CrossTransactionLog로 파싱합니다
+    private func parseTransactionLog(from json: [String: Any]) throws -> CrossTransactionLog {
+        guard let address = json["address"] as? String,
+              let data = json["data"] as? String,
+              let transactionHash = json["transactionHash"] as? String else {
+            throw CrossSDKError.invalidReceiptData
+        }
+        
+        let topics = json["topics"] as? [String] ?? []
+        
+        return CrossTransactionLog(
+            address: address,
+            topics: topics,
+            data: data,
+            blockNumber: json["blockNumber"] as? String,
+            transactionHash: transactionHash,
+            transactionIndex: json["transactionIndex"] as? String,
+            blockHash: json["blockHash"] as? String,
+            logIndex: json["logIndex"] as? String
+        )
+    }
+    
+    /// 특정 트랜잭션의 폴링을 취소합니다
+    public func cancelReceiptPolling(txHash: String) {
+        if let task = pollingTasks[txHash] {
+            task.cancel()
+            pollingTasks.removeValue(forKey: txHash)
+            
+            Task { @MainActor in
+                pollingTransactions.removeValue(forKey: txHash)
+            }
+            
+            print("🚫 Receipt polling cancelled for tx: \(txHash)")
+        }
+    }
+    
+    /// 모든 폴링 작업을 취소합니다
+    public func cancelAllReceiptPolling() {
+        for (txHash, task) in pollingTasks {
+            task.cancel()
+            print("🚫 Receipt polling cancelled for tx: \(txHash)")
+        }
+        
+        pollingTasks.removeAll()
+        
+        Task { @MainActor in
+            pollingTransactions.removeAll()
+        }
+        
+        print("🚫 All receipt polling cancelled")
+    }
+    
+    /// 현재 폴링 중인 트랜잭션 목록을 반환합니다
+    public func getPollingTransactions() -> [String: CrossTransactionReceiptStatus] {
+        return pollingTransactions
+    }
+    
+    /// 특정 트랜잭션이 폴링 중인지 확인합니다
+    public func isPolling(txHash: String) -> Bool {
+        return pollingTasks[txHash] != nil
+    }
+    
+    // MARK: - Convenience Methods
+    
+    /// 트랜잭션을 전송하고 Receipt를 기다립니다 (편의 메서드)
+    /// - Parameters:
+    ///   - params: 트랜잭션 파라미터
+    ///   - customData: 커스텀 데이터 (선택사항)
+    ///   - config: Receipt 폴링 설정 (기본값 사용 가능)
+    /// - Returns: 트랜잭션 Receipt
+    public func sendTransactionAndWaitForReceipt(
+        _ params: CrossTransactionParams,
+        customData: CustomData? = nil,
+        config: CrossReceiptPollingConfig = .default
+    ) async throws -> CrossTransactionReceipt {
+        
+        print("🚀 Sending transaction and waiting for receipt...")
+        
+        // 1. 트랜잭션 전송
+        let txHash = try await sendTransaction(params, customData: customData)
+        print("📝 Transaction sent with hash: \(txHash)")
+        
+        // 2. Receipt 폴링
+        let receipt = try await waitForTransactionReceipt(txHash: txHash, config: config)
+        print("📄 Receipt received for tx: \(txHash)")
+        
+        return receipt
+    }
+    
+    /// 트랜잭션 해시로 즉시 Receipt를 조회합니다 (폴링 없이)
+    /// - Parameter txHash: 트랜잭션 해시
+    /// - Returns: 트랜잭션 Receipt (없으면 nil)
+    public func getTransactionReceipt(txHash: String) async throws -> CrossTransactionReceipt? {
+        print("🔍 Getting transaction receipt for tx: \(txHash)")
+        return try await fetchTransactionReceipt(txHash: txHash)
+    }
 }
 
 /// CrossTransactionManager의 이벤트를 처리하는 델리게이트
@@ -686,4 +985,20 @@ public protocol CrossTransactionManagerDelegate: AnyObject {
 
     /// 트랜잭션이 실패했을 때 호출
     func transactionDidFail(error: Error)
+    
+    /// Receipt 폴링이 시작되었을 때 호출 (선택사항)
+    func receiptPollingDidStart(txHash: String)
+    
+    /// Receipt를 성공적으로 받았을 때 호출 (선택사항)
+    func receiptDidReceive(txHash: String, receipt: CrossTransactionReceipt)
+    
+    /// Receipt 폴링이 실패했을 때 호출 (선택사항)
+    func receiptPollingDidFail(txHash: String, error: Error)
+}
+
+/// 델리게이트 메서드를 선택사항으로 만들기 위한 extension
+public extension CrossTransactionManagerDelegate {
+    func receiptPollingDidStart(txHash: String) {}
+    func receiptDidReceive(txHash: String, receipt: CrossTransactionReceipt) {}
+    func receiptPollingDidFail(txHash: String, error: Error) {}
 }

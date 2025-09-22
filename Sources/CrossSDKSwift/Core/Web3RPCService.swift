@@ -1,4 +1,5 @@
 import Foundation
+import Commons
 
 /// Lightweight JSON-RPC client for EVM nodes (used for gas estimation without wallet permissions)
 public enum Web3RPCService {
@@ -34,6 +35,15 @@ public enum Web3RPCService {
         if let err = res.error { throw err }
         guard let result = res.result else { throw RPCError(code: -1, message: "No result from eth_maxPriorityFeePerGas") }
         return result
+    }
+
+    /// Get transaction receipt using direct RPC call (bypasses WalletConnect permissions)
+    static func getTransactionReceipt(rpcUrl: String, txHash: String) async throws -> AnyCodable? {
+        let req = RPCRequest(method: "eth_getTransactionReceipt", params: [txHash], id: 1)
+        let res: RPCResponse<AnyCodable> = try await post(url: rpcUrl, body: req)
+        if let err = res.error { throw err }
+        
+        return res.result
     }
 
     // MARK: - HTTP

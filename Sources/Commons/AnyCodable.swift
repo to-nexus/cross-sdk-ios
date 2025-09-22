@@ -150,14 +150,21 @@ extension AnyCodable: Decodable, Encodable {
                     let codable = try container.decode(AnyCodable.self, forKey: key)
                     result[key.stringValue] = codable.value
                 } catch AnyCodableError.nullFound {
-                    // Ignoring that key
+                    // Include null values as NSNull for EIP-712 compatibility
+                    result[key.stringValue] = NSNull()
                 }
             }
             value = result
         } else if var container = try? decoder.unkeyedContainer() {
             var result = [Any]()
             while !container.isAtEnd {
-                result.append(try container.decode(AnyCodable.self).value)
+                do {
+                    let codable = try container.decode(AnyCodable.self)
+                    result.append(codable.value)
+                } catch AnyCodableError.nullFound {
+                    // Include null values as NSNull in arrays
+                    result.append(NSNull())
+                }
             }
             value = result
         } else if let container = try? decoder.singleValueContainer() {
@@ -170,7 +177,8 @@ extension AnyCodable: Decodable, Encodable {
             } else if let stringVal = try? container.decode(String.self) {
                 value = stringVal
             } else if container.decodeNil() {
-                throw AnyCodableError.nullFound
+                // Handle null values as NSNull for EIP-712 compatibility
+                value = NSNull()
             } else {
                 throw DecodingError.dataCorruptedError(in: container, debugDescription: "The container contains nothing serializable.")
             }

@@ -10,7 +10,7 @@ let yttriumDebug = false
 var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.3.0"),
     .package(url: "https://github.com/WalletConnect/QRCode", from: "14.3.1"),
-    .package(url: "https://github.com/web3swift-team/web3swift.git", from: "3.3.1"),
+    .package(url: "https://github.com/web3swift-team/web3swift.git", branch: "develop"),
     .package(url: "https://github.com/krzyzanowskim/CryptoSwift", from: "1.8.0"),
     // .package(name: "CoinbaseWalletSDK", url: "https://github.com/MobileWalletProtocol/wallet-mobile-sdk", .upToNextMinor(from: "1.0.0")), // Temporarily removed
 //    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", .upToNextMinor(from: "1.10.0")),
