@@ -1,90 +1,92 @@
 # CrossSDKSwift
 
-iOS용 Web3 DApp 개발을 위한 통합 SDK입니다. WalletConnect 프로토콜을 사용하여 지갑 연결, 체인 관리, 서명, 트랜잭션 전송 기능을 제공합니다.
+A comprehensive SDK for Web3 DApp development on iOS. Provides wallet connection, chain management, signing, and transaction functionality using the WalletConnect protocol.
 
-## 주요 기능
+## Key Features
 
-- 지갑 연결 및 세션 관리
-- SwiftUI `@ObservedObject` 지원
-- 멀티체인 지원 (Cross, BSC, Kaia, Ethereum)
-- 서명 기능 (Personal Sign, ETH Sign, EIP-712 Typed Data)
-- 트랜잭션 전송 (네이티브/ERC-20)
-- 잔액 조회
-- 유틸리티 함수 제공
+- Wallet connection and session management
+- SwiftUI `@ObservedObject` support
+- Multi-chain support (Cross, BSC, Kaia, Ethereum)
+- Signing capabilities (Personal Sign, ETH Sign, EIP-712 Typed Data)
+- Transaction sending (Native/ERC-20)
+- Balance queries
+- Transaction receipt polling
+- Automatic completion detection and status checking
+- Event log parsing
+- Utility functions
 
 ## Requirements
 - iOS 13.0+
 - Xcode 13.0+
 - Swift 5.5+
 
-## 지원되는 기능
+## Supported Features
 
-### 지갑 연결
-- `connectWallet()` 함수를 통한 지갑 연결
-- 연결 상태 추적 (`connected`, `connecting`, `disconnected`)
-- 앱 재시작 시 세션 복구
-- 지갑 앱 자동 전환
+### Wallet Connection
+- Wallet connection via `connectWallet()` function
+- Connection state tracking (`connected`, `connecting`, `disconnected`)
+- Session recovery on app restart
+- Automatic wallet app switching
 
-### 멀티체인 지원
+### Multi-Chain Support
 ```swift
-.crossMainnet, .crossTestnet    // Cross 네트워크
+.crossMainnet, .crossTestnet    // Cross Network
 .bscMainnet, .bscTestnet        // Binance Smart Chain  
 .kaiaMainnet, .kaiaTestnet      // Kaia (Klaytn)
 .ethereum, .sepolia             // Ethereum
 ```
 
-### 서명 기능
-- Personal Sign: 텍스트 메시지 서명
-- ETH Sign: 원시 바이트 데이터 서명
-- EIP-712 Typed Data: 구조화된 데이터 서명
-- 서명 검증 및 주소 복구
+### Signing Capabilities
+- Personal Sign: Sign text messages
+- ETH Sign: Sign raw byte data
+- EIP-712 Typed Data: Sign structured data
+- Signature verification and address recovery
 
-### 트랜잭션
-- 네이티브 토큰 전송
-- ERC-20 토큰 전송
-- 동적 수수료 (EIP-1559)
-- 잔액 조회
-- 스마트 컨트랙트 함수 호출
-- **트랜잭션 Receipt 폴링** ✨ NEW
-- **자동 완료 대기 및 상태 확인** ✨ NEW
-- **이벤트 로그 파싱** ✨ NEW
+### Transactions
+- Native token transfers
+- ERC-20 token transfers
+- Dynamic fees (EIP-1559)
+- Balance queries
+- Smart contract function calls
+- Transaction receipt polling
+- Automatic completion detection and status checking
 
-### 유틸리티
-- 주소 검증 및 포맷팅
-- 16진수/10진수 변환
-- Wei 단위 변환
-- 에러 처리
+### Utilities
+- Address validation and formatting
+- Hex/decimal conversion
+- Wei unit conversion
+- Error handling
 
-## 설치
+## Installation
 
 ### Swift Package Manager
-Xcode에서 File → Add Package Dependencies를 선택하고 다음 URL을 입력합니다:
+In Xcode, select File → Add Package Dependencies and enter the following URL:
 ```
 https://github.com/to-nexus/cross-sdk-swift
 ```
 
-Package.swift에 직접 추가:
+Add directly to Package.swift:
 ```swift
 dependencies: [
     .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
 ]
 ```
 
-## 초기 설정
+## Initial Setup
 
 ### WalletConnect Project ID
-[WalletConnect Cloud](https://cloud.walletconnect.com/)에서 프로젝트를 생성하여 Project ID를 발급받습니다.
+Create a project at [WalletConnect Cloud](https://cloud.walletconnect.com/) to obtain your Project ID.
 
-### URL Scheme 설정
-지갑 앱에서 돌아오기 위한 URL Scheme을 설정합니다.
+### URL Scheme Configuration
+Set up URL Scheme for returning from wallet apps.
 
-Xcode에서 설정:
+Configure in Xcode:
 1. Target → Info → URL Types
-2. "+" 버튼 클릭
-3. URL Schemes: 앱 고유 스킴 (예: `mydapp`)
-4. Identifier: 앱 번들 ID
+2. Click "+" button
+3. URL Schemes: Unique app scheme (e.g., `mydapp`)
+4. Identifier: App bundle ID
 
-Info.plist에 직접 추가:
+Add directly to Info.plist:
 ```xml
 <key>CFBundleURLTypes</key>
 <array>
@@ -99,7 +101,7 @@ Info.plist에 직접 추가:
 </array>
 ```
 
-### 앱 초기화
+### App Initialization
 ```swift
 import SwiftUI
 import CrossSDKSwift
@@ -129,10 +131,11 @@ struct MyApp: App {
         }
     }
 }
+```
 
-## 사용법
+## Usage
 
-### 1. 기본 UI 구성
+### 1. Basic UI Setup
 ```swift
 import SwiftUI
 import CrossSDKSwift
@@ -144,20 +147,20 @@ struct ContentView: View {
         VStack(spacing: 20) {
             switch sdk.connectionState {
             case .connected(let wallet):
-                Text("연결됨: \(sdk.utils.formatAddress(wallet.address))")
-                Text("체인: \(wallet.chain.name)")
+                Text("Connected: \(sdk.utils.formatAddress(wallet.address))")
+                Text("Chain: \(wallet.chain.name)")
             case .connecting:
-                Text("연결 중")
+                Text("Connecting")
             case .disconnected:
-                Text("연결되지 않음")
+                Text("Disconnected")
             }
             if sdk.isConnected {
-                Button("지갑 연결 해제") {
+                Button("Disconnect Wallet") {
                     Task { try? await sdk.disconnectWallet() }
                 }
                 .buttonStyle(.borderedProminent)
             } else {
-                Button("지갑 연결") {
+                Button("Connect Wallet") {
                     Task { try? await sdk.connectWallet() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -168,19 +171,19 @@ struct ContentView: View {
 }
 ```
 
-### 2. 지갑 연결
+### 2. Wallet Connection
 ```swift
 try await CrossSDKSwift.shared.connectWallet()
 try await CrossSDKSwift.shared.switchChain(to: .ethereum)
 
 if CrossSDKSwift.shared.isConnected {
     let wallet = CrossSDKSwift.shared.connectedWallet
-    print("주소: \(wallet?.address ?? "")")
-    print("체인: \(wallet?.chain.name ?? "")")
+    print("Address: \(wallet?.address ?? "")")
+    print("Chain: \(wallet?.chain.name ?? "")")
 }
 ```
 
-### 3. 메시지 서명
+### 3. Message Signing
 ```swift
 // Personal Sign
 let result = try await CrossSDKSwift.shared.personalSign(
@@ -202,18 +205,18 @@ let result = try await CrossSDKSwift.shared.signTypedDataV4(
 )
 ```
 
-### 4. 트랜잭션 전송
+### 4. Transaction Sending
 
-#### 기본 전송 (트랜잭션 해시만 반환)
+#### Basic Sending (Hash Only)
 ```swift
-// 네이티브 토큰 전송 - 빠른 응답
+// Native token transfer - Quick response
 let txHash: String = try await CrossSDKSwift.shared.sendNative(
     to: "0x742d35Cc6634C0532925a3b8D4C9db96B47D9a58",
     amount: "0.01"
 )
-print("트랜잭션 전송됨: \(txHash)")
+print("Transaction sent: \(txHash)")
 
-// 일반 트랜잭션 전송
+// General transaction sending
 let params = CrossTransactionParams(
     to: "0x742d35Cc6634C0532925a3b8D4C9db96B47D9a58",
     value: "0.01"
@@ -221,45 +224,45 @@ let params = CrossTransactionParams(
 let txHash: String = try await CrossSDKSwift.shared.sendTransaction(params)
 ```
 
-#### 완전한 전송 (Receipt까지 대기) ✨ NEW
+#### Complete Sending (Wait for Receipt)
 ```swift
-// 네이티브 토큰 전송 + Receipt 폴링
+// Native token transfer + Receipt polling
 let receipt: CrossTransactionReceipt = try await CrossSDKSwift.shared.sendNative(
     to: "0x742d35Cc6634C0532925a3b8D4C9db96B47D9a58",
     amount: "0.01"
 )
 
-// 트랜잭션 완료 상태 확인
+// Check transaction completion status
 if receipt.receiptStatus == .success {
-    print("✅ 트랜잭션 성공!")
-    print("📄 블록 번호: \(receipt.blockNumber ?? "N/A")")
-    print("⛽ 가스 사용량: \(receipt.gasUsed)")
-    print("💰 실제 가스 비용: \(receipt.effectiveGasPrice ?? "N/A")")
+    print("✅ Transaction successful!")
+    print("📄 Block number: \(receipt.blockNumber ?? "N/A")")
+    print("⛽ Gas used: \(receipt.gasUsed)")
+    print("💰 Effective gas price: \(receipt.effectiveGasPrice ?? "N/A")")
 } else {
-    print("❌ 트랜잭션 실패")
+    print("❌ Transaction failed")
 }
 
-// 일반 트랜잭션 + Receipt 폴링
+// General transaction + Receipt polling
 let params = CrossTransactionParams(
     to: "0x742d35Cc6634C0532925a3b8D4C9db96B47D9a58",
     value: "0.01"
 )
 let receipt: CrossTransactionReceipt = try await CrossSDKSwift.shared.sendTransaction(params)
 
-// Receipt 상세 정보 활용
-print("📊 Receipt 정보:")
-print("  - 상태: \(receipt.receiptStatus)")
-print("  - 블록 해시: \(receipt.blockHash ?? "N/A")")
-print("  - 트랜잭션 인덱스: \(receipt.transactionIndex ?? 0)")
-print("  - 이벤트 로그: \(receipt.logs.count)개")
+// Utilize detailed receipt information
+print("📊 Receipt information:")
+print("  - Status: \(receipt.receiptStatus)")
+print("  - Block hash: \(receipt.blockHash ?? "N/A")")
+print("  - Transaction index: \(receipt.transactionIndex ?? 0)")
+print("  - Event logs: \(receipt.logs.count) logs")
 
-// 이벤트 로그 처리
+// Process event logs
 for log in receipt.logs {
-    print("📝 이벤트: \(log.address) - \(log.topics.count)개 토픽")
+    print("📝 Event: \(log.address) - \(log.topics.count) topics")
 }
 ```
 
-### 5. 잔액 조회
+### 5. Balance Queries
 ```swift
 let nativeBalance = try await CrossSDKSwift.shared.fetchNativeBalance()
 let tokenBalance = try await CrossSDKSwift.shared.fetchERC20Balance(
@@ -267,9 +270,9 @@ let tokenBalance = try await CrossSDKSwift.shared.fetchERC20Balance(
 )
 ```
 
-### 6. 스마트 컨트랙트
+### 6. Smart Contracts
 
-#### 컨트랙트 읽기 (view 함수)
+#### Contract Reading (view functions)
 ```swift
 let balanceHex = try await CrossSDKSwift.shared.transactionManager.readContract(
     contractAddress: "0xContractAddress",
@@ -279,9 +282,9 @@ let balanceHex = try await CrossSDKSwift.shared.transactionManager.readContract(
 )
 ```
 
-#### 컨트랙트 쓰기 - 기본 (해시만 반환)
+#### Contract Writing - Basic (Hash Only)
 ```swift
-// 빠른 컨트랙트 호출
+// Quick contract call
 let txHash: String = try await CrossSDKSwift.shared.writeContract(
     contractAddress: "0xContractAddress",
     methodName: "transfer",
@@ -289,12 +292,12 @@ let txHash: String = try await CrossSDKSwift.shared.writeContract(
     params: ["0xRecipient", "1000000000000000000"],
     value: "0"
 )
-print("컨트랙트 호출됨: \(txHash)")
+print("Contract called: \(txHash)")
 ```
 
-#### 컨트랙트 쓰기 - 완전한 호출 (Receipt까지 대기) ✨ NEW
+#### Contract Writing - Complete Call (Wait for Receipt)
 ```swift
-// ERC-20 토큰 전송 + Receipt 확인
+// ERC-20 token transfer + Receipt confirmation
 let receipt: CrossTransactionReceipt = try await CrossSDKSwift.shared.writeContract(
     contractAddress: "0xTokenContract",
     methodName: "transfer",
@@ -303,11 +306,11 @@ let receipt: CrossTransactionReceipt = try await CrossSDKSwift.shared.writeContr
     value: "0"
 )
 
-// 컨트랙트 호출 결과 확인
+// Check contract call result
 if receipt.receiptStatus == .success {
-    print("✅ 토큰 전송 성공!")
+    print("✅ Token transfer successful!")
     
-    // Transfer 이벤트 로그 찾기
+    // Find Transfer event logs
     for log in receipt.logs {
         if log.topics.count >= 3 {
             // Transfer(address indexed from, address indexed to, uint256 value)
@@ -317,30 +320,30 @@ if receipt.receiptStatus == .success {
         }
     }
 } else {
-    print("❌ 토큰 전송 실패")
+    print("❌ Token transfer failed")
 }
 
-// NFT 민팅 예제
+// NFT minting example
 let mintReceipt: CrossTransactionReceipt = try await CrossSDKSwift.shared.writeContract(
     contractAddress: "0xNFTContract",
     methodName: "mint",
     abi: "mint()",
-    value: "0.01" // payable 함수인 경우 ETH 전송
+    value: "0.01" // Send ETH for payable functions
 )
 
-// 민팅 성공 여부 및 가스 비용 확인
-print("🎨 NFT 민팅 완료!")
-print("⛽ 사용된 가스: \(mintReceipt.gasUsed)")
-print("💰 가스 비용: \(mintReceipt.effectiveGasPrice ?? "N/A")")
+// Check minting success and gas costs
+print("🎨 NFT minting completed!")
+print("⛽ Gas used: \(mintReceipt.gasUsed)")
+print("💰 Gas cost: \(mintReceipt.effectiveGasPrice ?? "N/A")")
 ```
 
-#### Receipt 폴링 설정 (고급)
+#### Receipt Polling Configuration (Advanced)
 ```swift
-// 커스텀 폴링 설정
+// Custom polling configuration
 let config = CrossReceiptPollingConfig(
-    maxAttempts: 60,        // 최대 60번 시도
-    intervalSeconds: 2.0,   // 2초 간격
-    timeoutSeconds: 120.0   // 2분 타임아웃
+    maxAttempts: 60,        // Maximum 60 attempts
+    intervalSeconds: 2.0,   // 2-second intervals
+    timeoutSeconds: 120.0   // 2-minute timeout
 )
 
 let receipt = try await CrossSDKSwift.shared.transactionManager.sendTransactionAndWaitForReceipt(
@@ -349,9 +352,9 @@ let receipt = try await CrossSDKSwift.shared.transactionManager.sendTransactionA
 )
 ```
 
-## UI 컴포넌트
+## UI Components
 
-### 지갑 컴포넌트
+### Wallet Components
 ```swift
 struct MyWalletView: View {
     var body: some View {
@@ -363,16 +366,16 @@ struct MyWalletView: View {
 }
 ```
 
-### 개별 컴포넌트
+### Individual Components
 ```swift
 CrossSDKConnectButton()
 CrossSDKNetworkSelector()
 SocketStatusView()
 ```
 
-## 유틸리티 함수
+## Utility Functions
 
-### 주소 관련
+### Address-related
 ```swift
 let utils = CrossSDKSwift.shared.utils
 
@@ -380,7 +383,7 @@ let isValid = utils.isValidAddress("0x742d35Cc6634C0532925a3b8D4C9db96B47D9a58")
 let formatted = utils.formatAddress("0x742d35Cc6634C0532925a3b8D4C9db96B47D9a58")
 ```
 
-### 데이터 변환
+### Data Conversion
 ```swift
 let decimal = utils.hexToDecimal("0xff")
 let hex = utils.decimalStringToHex("255")
@@ -392,21 +395,21 @@ let data = try utils.encodeERC20TransferData(
 )
 ```
 
-## 예제 앱
+## Example App
 
 ```bash
 open Example/DappSample/DappSample.xcodeproj
 ```
 
-예제 화면:
-- `SigningExampleView`: 서명 기능
-- `SendExampleView`: 전송 기능
-- `BalanceExampleView`: 잔액 조회
-- `CrossSDKWalletKit`: 지갑 컴포넌트
+Example screens:
+- `SigningExampleView`: Signing functionality
+- `SendExampleView`: Transfer functionality
+- `BalanceExampleView`: Balance queries
+- `CrossSDKWalletKit`: Wallet components
 
-## 고급 설정
+## Advanced Configuration
 
-### 커스텀 체인
+### Custom Chains
 ```swift
 extension CrossChain {
     static let myCustomChain = CrossChain(
@@ -424,53 +427,65 @@ CrossSDKSwift.shared.configure(
 )
 ```
 
-### 에러 처리
+### Error Handling
 ```swift
 do {
     let result = try await CrossSDKSwift.shared.connectWallet()
 } catch CrossSDKError.userRejected {
-    print("사용자 거부")
+    print("User rejected")
 } catch CrossSDKError.networkError(let message) {
-    print("네트워크 오류: \(message)")
+    print("Network error: \(message)")
 } catch {
-    print("오류: \(error.localizedDescription)")
+    print("Error: \(error.localizedDescription)")
 }
 ```
 
-#### Receipt 폴링 에러 처리 
+#### Receipt Polling Error Handling
 ```swift
 do {
     let receipt = try await CrossSDKSwift.shared.sendNative(
         to: "0x742d35Cc6634C0532925a3b8D4C9db96B47D9a58",
         amount: "0.01"
     )
-    print("트랜잭션 완료: \(receipt.receiptStatus)")
+    print("Transaction completed: \(receipt.receiptStatus)")
 } catch CrossSDKError.receiptPollingTimeout {
-    print("⏰ Receipt 폴링 타임아웃 - 트랜잭션이 아직 마이닝되지 않았습니다")
+    print("⏰ Receipt polling timeout - Transaction not yet mined")
 } catch CrossSDKError.invalidReceiptData {
-    print("📄 잘못된 Receipt 데이터")
+    print("📄 Invalid receipt data")
 } catch CrossSDKError.rpcRequestFailed(let message) {
-    print("🌐 RPC 요청 실패: \(message)")
+    print("🌐 RPC request failed: \(message)")
 } catch {
-    print("오류: \(error.localizedDescription)")
+    print("Error: \(error.localizedDescription)")
 }
 
-// Receipt 상태별 처리
+// Handle receipt status
 if let receipt = try? await CrossSDKSwift.shared.sendNative(to: address, amount: amount) {
     switch receipt.receiptStatus {
     case .success:
-        print("✅ 트랜잭션 성공!")
-        // 성공 로직
+        print("✅ Transaction successful!")
+        // Success logic
     case .failure:
-        print("❌ 트랜잭션 실패 - 가스 부족 또는 revert")
-        // 실패 로직
+        print("❌ Transaction failed - Out of gas or reverted")
+        // Failure logic
     }
 }
 ```
 
-## 테스트
+## License
 
-```bash
-swift test
-swift test --filter CrossUtilsTests
-```
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Please read our contributing guidelines and code of conduct before submitting pull requests.
+
+## Support
+
+For support and questions:
+- Create an issue on GitHub
+- Check our documentation
+- Review the example app
+
+---
+
+**CrossSDKSwift** - Making Web3 development on iOS simple and powerful! 🚀

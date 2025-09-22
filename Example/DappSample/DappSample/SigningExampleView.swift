@@ -275,12 +275,6 @@ struct SigningExampleView: View {
                     }
                     .font(.caption)
                     .foregroundColor(.blue)
-                    
-                    // Button("Null 테스트") {
-                    //     loadNullTestEIP712JSON()
-                    // }
-                    // .font(.caption)
-                    // .foregroundColor(.orange)
                 }
             }
             
