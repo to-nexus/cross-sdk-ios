@@ -8,7 +8,7 @@ Add this to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
+    .package(url: "https://github.com/to-nexus/cross-sdk-ios", from: "1.0.0")
 ]
 ```
 
@@ -17,7 +17,7 @@ dependencies: [
 Add this to your `Podfile`:
 
 ```ruby
-pod 'cross-sdk-swift', '~> 1.0.0'
+pod 'cross-sdk-ios', '~> 1.0.0'
 ```
 
 ## 📚 Quick Start
@@ -43,4 +43,4 @@ Please use Swift Package Manager for the best experience.
 
 ## 📖 Documentation
 
-For complete documentation, visit: https://github.com/to-nexus/cross-sdk-swift
+For complete documentation, visit: https://github.com/to-nexus/cross-sdk-ios

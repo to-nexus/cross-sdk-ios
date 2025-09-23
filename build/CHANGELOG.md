@@ -238,7 +238,7 @@ DappSample을 제외한 불필요한 예제 프로젝트들을 제거하여 프�
 CrossSDKSwift 프로젝트가 새로운 독립 저장소에 성공적으로 배포되었습니다.
 
 ### 📋 배포 정보
-- **저장소**: https://github.com/to-nexus/cross-sdk-swift
+- **저장소**: https://github.com/to-nexus/cross-sdk-ios
 - **브랜치**: main
 - **커밋 메시지**: `crs-2852: Initial commit - CrossSDKSwift 독립 저장소`
 - **파일 수**: 1,730개 파일 (4.65 MiB)
@@ -279,10 +279,10 @@ CrossSDKSwift 독립 프로젝트에 맞게 불필요한 CI/CD 워크플로우�
 기존 Reown 관련 CocoaPods 설정을 CrossSDKSwift용으로 완전히 업데이트했습니다.
 
 ### 🔄 주요 변경사항
-- **파일명 변경**: `reown-swift.podspec` → `cross-sdk-swift.podspec`
-- **패키지명 변경**: `reown-swift` → `cross-sdk-swift`
+- **파일명 변경**: `reown-swift.podspec` → `cross-sdk-ios.podspec`
+- **패키지명 변경**: `reown-swift` → `cross-sdk-ios`
 - **기본 subspec**: `CrossSDKSwift`로 설정
-- **저장소 정보**: `https://github.com/to-nexus/cross-sdk-swift`로 업데이트
+- **저장소 정보**: `https://github.com/to-nexus/cross-sdk-ios`로 업데이트
 - **작성자**: `NEXUS`로 변경
 - **설명**: CrossSDKSwift의 목적에 맞게 업데이트
 
@@ -290,8 +290,8 @@ CrossSDKSwift 독립 프로젝트에 맞게 불필요한 CI/CD 워크플로우�
 ```ruby
 spec.subspec 'CrossSDKSwift' do |ss|
   ss.source_files = 'Sources/CrossSDKSwift/**/*.{h,m,swift}'
-  ss.dependency 'cross-sdk-swift/CrossAppKit'
-  ss.dependency 'cross-sdk-swift/WalletConnectSign'
+  ss.dependency 'cross-sdk-ios/CrossAppKit'
+  ss.dependency 'cross-sdk-ios/WalletConnectSign'
   ss.resource_bundles = {
     'CrossSDKSwift' => ['Sources/CrossSDKSwift/Resources/*']
   }
@@ -301,7 +301,7 @@ end
 ### ✅ 사용법
 이제 CocoaPods를 통해 CrossSDKSwift를 설치할 수 있습니다:
 ```ruby
-pod 'cross-sdk-swift'  # 기본으로 CrossSDKSwift subspec 설치
+pod 'cross-sdk-ios'  # 기본으로 CrossSDKSwift subspec 설치
 ```
 
 ### 🔍 검증 완료

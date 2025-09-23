@@ -1,6 +1,6 @@
 //
 //  CrossJSONRPC.swift
-//  cross-sdk-swift
+//  cross-sdk-ios
 //
 //  Created by Chuck on 9/4/25.
 //

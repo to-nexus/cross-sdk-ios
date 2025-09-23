@@ -31,7 +31,7 @@ GitHub에서 Release 생성:
 ```swift
 // Package.swift에 추가
 dependencies: [
-    .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
+    .package(url: "https://github.com/to-nexus/cross-sdk-ios", from: "1.0.0")
 ]
 ```
 
@@ -98,7 +98,7 @@ jobs:
 ### Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
+    .package(url: "https://github.com/to-nexus/cross-sdk-ios", from: "1.0.0")
 ]
 ```
 

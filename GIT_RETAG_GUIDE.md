@@ -4,7 +4,7 @@
 
 ### 현재 태그 확인
 ```bash
-cd /Users/chuck/Documents/GitHub/cross-sdk-swift
+cd /Users/chuck/Documents/GitHub/cross-sdk-ios
 git tag -l
 ```
 
@@ -44,7 +44,7 @@ git tag -a 1.0.0 -m "CrossSDKSwift v1.0.0
 Swift Package Manager만 지원됩니다.
 
 dependencies: [
-    .package(url: \"https://github.com/to-nexus/cross-sdk-swift\", from: \"1.0.0\")
+    .package(url: \"https://github.com/to-nexus/cross-sdk-ios\", from: \"1.0.0\")
 ]
 
 ⚠️ Breaking Changes:
@@ -96,7 +96,7 @@ git ls-remote --tags origin
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
+    .package(url: "https://github.com/to-nexus/cross-sdk-ios", from: "1.0.0")
 ]
 ```
 
@@ -108,8 +108,8 @@ dependencies: [
 
 ## 📚 문서
 
-- [README.md](https://github.com/to-nexus/cross-sdk-swift/blob/main/README.md)
-- [예제 앱](https://github.com/to-nexus/cross-sdk-swift/tree/main/Example/DappSample)
+- [README.md](https://github.com/to-nexus/cross-sdk-ios/blob/main/README.md)
+- [예제 앱](https://github.com/to-nexus/cross-sdk-ios/tree/main/Example/DappSample)
 
 ## 🐛 알려진 이슈
 

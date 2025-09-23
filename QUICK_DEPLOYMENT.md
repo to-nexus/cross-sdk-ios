@@ -18,7 +18,7 @@
 ### 2단계: GitHub Actions 완료 대기
 - GitHub에서 자동으로 릴리즈 생성
 - GitHub Release 자동 생성
-- 진행 상황: https://github.com/to-nexus/cross-sdk-swift/actions
+- 진행 상황: https://github.com/to-nexus/cross-sdk-ios/actions
 
 ### 3단계: CocoaPods 배포 (수동)
 ```bash
@@ -26,7 +26,7 @@
 pod trunk register your-email@example.com 'Your Name'
 
 # CocoaPods에 배포
-pod trunk push cross-sdk-swift.podspec --allow-warnings
+pod trunk push cross-sdk-ios.podspec --allow-warnings
 ```
 
 ## 📋 배포 상태 확인
@@ -35,13 +35,13 @@ pod trunk push cross-sdk-swift.podspec --allow-warnings
 ```swift
 // Package.swift에서 테스트
 dependencies: [
-    .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
+    .package(url: "https://github.com/to-nexus/cross-sdk-ios", from: "1.0.0")
 ]
 ```
 
 ### CocoaPods 배포 확인
 ```bash
-pod search cross-sdk-swift
+pod search cross-sdk-ios
 ```
 
 ### 배포 확인
@@ -51,7 +51,7 @@ pod search cross-sdk-swift
 
 ### ✅ 준비 완료
 - [x] Package.swift (SPM)
-- [x] cross-sdk-swift.podspec (CocoaPods) - 검증 완료
+- [x] cross-sdk-ios.podspec (CocoaPods) - 검증 완료
 - [x] 배포 패키지 스크립트
 - [x] GitHub Actions 워크플로우
 - [x] 릴리즈 자동화 스크립트
@@ -61,7 +61,7 @@ pod search cross-sdk-swift
 | 배포 방법 | 상태 | 명령어 |
 |-----------|------|--------|
 | **SPM** | ✅ 준비완료 | `./scripts/release.sh 1.0.0` |
-| **CocoaPods** | ✅ 준비완료 | `pod trunk push cross-sdk-swift.podspec --allow-warnings` |
+| **CocoaPods** | ✅ 준비완료 | `pod trunk push cross-sdk-ios.podspec --allow-warnings` |
 
 ## 🎯 다음 릴리즈 준비사항
 
@@ -82,7 +82,7 @@ pod search cross-sdk-swift
 ### 일반적인 문제
 1. **Podspec 검증 실패**
    ```bash
-   pod spec lint cross-sdk-swift.podspec --verbose
+   pod spec lint cross-sdk-ios.podspec --verbose
    ```
 
 2. **GitHub Actions 실패**
@@ -105,7 +105,7 @@ git push origin 1.0.0
 
 #### CocoaPods만 배포
 ```bash
-pod trunk push cross-sdk-swift.podspec --allow-warnings
+pod trunk push cross-sdk-ios.podspec --allow-warnings
 ```
 
 #### 배포 패키지만 생성

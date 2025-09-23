@@ -43,7 +43,7 @@ echo "{\"version\": \"$VERSION\"}" > Sources/WalletConnectRelay/PackageConfig.js
 
 # 6. Podspec 검증
 echo "🔍 Podspec 검증 중..."
-pod spec lint cross-sdk-swift.podspec --allow-warnings
+pod spec lint cross-sdk-ios.podspec --allow-warnings
 
 # 7. 변경사항 커밋
 echo "💾 버전 정보 커밋 중..."
@@ -63,7 +63,7 @@ echo "✅ 릴리즈 준비 완료!"
 echo ""
 echo "다음 단계:"
 echo "1. GitHub Actions가 자동으로 XCFramework를 빌드하고 릴리즈를 생성합니다."
-echo "2. CocoaPods 배포: pod trunk push cross-sdk-swift.podspec --allow-warnings"
+echo "2. CocoaPods 배포: pod trunk push cross-sdk-ios.podspec --allow-warnings"
 echo "3. GitHub에서 릴리즈 노트를 확인하고 수정하세요."
 echo ""
-echo "🔗 GitHub 릴리즈: https://github.com/to-nexus/cross-sdk-swift/releases/tag/$VERSION"
+echo "🔗 GitHub 릴리즈: https://github.com/to-nexus/cross-sdk-ios/releases/tag/$VERSION"

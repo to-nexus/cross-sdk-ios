@@ -37,7 +37,7 @@ git tag -a 1.0.0 -m "CrossSDKSwift v1.0.0
 Swift Package Manager만 지원됩니다.
 
 dependencies: [
-    .package(url: \"https://github.com/to-nexus/cross-sdk-swift\", from: \"1.0.0\")
+    .package(url: \"https://github.com/to-nexus/cross-sdk-ios\", from: \"1.0.0\")
 ]
 
 ⚠️ Breaking Changes:
@@ -57,4 +57,4 @@ git tag -l
 echo ""
 echo "🎯 사용법:"
 echo "Swift Package Manager:"
-echo ".package(url: \"https://github.com/to-nexus/cross-sdk-swift\", from: \"1.0.0\")"
+echo ".package(url: \"https://github.com/to-nexus/cross-sdk-ios\", from: \"1.0.0\")"

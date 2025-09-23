@@ -62,13 +62,13 @@ A comprehensive SDK for Web3 DApp development on iOS. Provides wallet connection
 ### Swift Package Manager
 In Xcode, select File → Add Package Dependencies and enter the following URL:
 ```
-https://github.com/to-nexus/cross-sdk-swift
+https://github.com/to-nexus/cross-sdk-ios
 ```
 
 Add directly to Package.swift:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
+    .package(url: "https://github.com/to-nexus/cross-sdk-ios", from: "1.0.0")
 ]
 ```
 

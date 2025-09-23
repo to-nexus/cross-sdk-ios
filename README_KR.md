@@ -59,13 +59,13 @@ iOS용 Web3 DApp 개발을 위한 통합 SDK입니다. WalletConnect 프로토�
 ### Swift Package Manager
 Xcode에서 File → Add Package Dependencies를 선택하고 다음 URL을 입력합니다:
 ```
-https://github.com/to-nexus/cross-sdk-swift
+https://github.com/to-nexus/cross-sdk-ios
 ```
 
 Package.swift에 직접 추가:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/to-nexus/cross-sdk-swift", from: "1.0.0")
+    .package(url: "https://github.com/to-nexus/cross-sdk-ios", from: "1.0.0")
 ]
 ```
 

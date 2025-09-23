@@ -37,7 +37,7 @@ var dependencies: [Package.Dependency] = [
 //}
 
 let package = Package(
-    name: "cross-sdk-swift",
+    name: "cross-sdk-ios",
     platforms: [
         .iOS(.v14),
         .macOS(.v10_15),
