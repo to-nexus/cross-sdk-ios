@@ -8,6 +8,10 @@
 import SwiftUI
 import CrossSDKSwift
 
+#if canImport(QRCode)
+import QRCode
+#endif
+
 struct ContentView: View {
     @ObservedObject private var sdk = CrossSDKSwift.shared
 
@@ -180,6 +184,9 @@ struct ConnectionStatusView: View {
 // MARK: - 지갑 연결 뷰
 struct WalletConnectionView: View {
     @ObservedObject private var sdk = CrossSDKSwift.shared
+    @State private var showQRCode = false
+    @State private var connectURL: String?
+    @State private var isGeneratingURL = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -195,19 +202,52 @@ struct WalletConnectionView: View {
                 }
                 .buttonStyle(.borderedProminent)
             } else {
-                Button("Connect Wallet") {
-                    print("🎯 DappSample: Connect Wallet button pressed")
-                    Task {
-                        do {
-                            print("🎯 DappSample: Calling sdk.connectWallet()")
-                            try await sdk.connectWallet()
-                            print("🎯 DappSample: sdk.connectWallet() completed")
-                        } catch {
-                            print("❌ Connect error: \(error.localizedDescription)")
+                VStack(spacing: 12) {
+                    // 기존 연결 버튼
+                    Button("Connect Wallet") {
+                        print("🎯 DappSample: Connect Wallet button pressed")
+                        Task {
+                            do {
+                                print("🎯 DappSample: Calling sdk.connectWallet()")
+                                try await sdk.connectWallet()
+                                print("🎯 DappSample: sdk.connectWallet() completed")
+                            } catch {
+                                print("❌ Connect error: \(error.localizedDescription)")
+                            }
                         }
                     }
+                    .buttonStyle(.borderedProminent)
+                    
+                    // QR 코드 생성 버튼
+                    Button(isGeneratingURL ? "Generating QR..." : "Show QR Code") {
+                        generateQRCode()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isGeneratingURL)
                 }
-                .buttonStyle(.borderedProminent)
+            }
+        }
+        .sheet(isPresented: $showQRCode) {
+            QRCodeView(url: connectURL ?? "")
+        }
+    }
+    
+    private func generateQRCode() {
+        isGeneratingURL = true
+        Task {
+            do {
+                let url = try await sdk.generateConnectURL()
+                await MainActor.run {
+                    connectURL = url
+                    showQRCode = true
+                    isGeneratingURL = false
+                }
+                print("🎯 Generated QR URL: \(url)")
+            } catch {
+                await MainActor.run {
+                    isGeneratingURL = false
+                }
+                print("❌ QR generation error: \(error.localizedDescription)")
             }
         }
     }
@@ -356,6 +396,114 @@ struct ImmediateChainSwitchView: View {
             buttons: buttons + [.cancel()]
         )
     }
+}
+
+// MARK: - QR 코드 표시 뷰
+struct QRCodeView: View {
+    let url: String
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("지갑 연결 QR 코드")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("CROSSx 지갑으로 이 QR 코드를 스캔하세요")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                // QR 코드 표시
+                qrCodeImage
+                    .frame(width: 250, height: 250)
+                    .background(Color.white)
+                    .cornerRadius(12)
+                    .shadow(radius: 4)
+                
+                // URL 텍스트 (디버깅용)
+                VStack(spacing: 8) {
+                    Text("연결 URL:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text(url)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(8)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(6)
+                        .lineLimit(3)
+                }
+                .padding(.horizontal)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("QR 연결")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("닫기") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var qrCodeImage: some View {
+        #if canImport(QRCode)
+        if let qrImage = generateQRCode(from: url) {
+            Image(uiImage: qrImage)
+                .interpolation(.none)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+        } else {
+            qrCodeFallback
+        }
+        #else
+        qrCodeFallback
+        #endif
+    }
+    
+    private var qrCodeFallback: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "qrcode")
+                .font(.system(size: 80))
+                .foregroundColor(.gray)
+            
+            Text("QR 코드를 생성할 수 없습니다")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    #if canImport(QRCode)
+    private func generateQRCode(from string: String) -> UIImage? {
+        do {
+            let doc = QRCode.Document(
+                utf8String: string,
+                errorCorrection: .medium
+            )
+            
+            // QR 코드 스타일 설정
+            doc.design.additionalQuietZonePixels = 2
+            doc.design.style.eye = QRCode.FillStyle.Solid(UIColor.black.cgColor)
+            doc.design.style.pupil = QRCode.FillStyle.Solid(UIColor.black.cgColor)
+            doc.design.style.onPixels = QRCode.FillStyle.Solid(UIColor.black.cgColor)
+            doc.design.style.background = QRCode.FillStyle.Solid(UIColor.white.cgColor)
+            
+            let cgImage = try doc.cgImage(CGSize(width: 500, height: 500))
+            return UIImage(cgImage: cgImage)
+        } catch {
+            print("❌ QR Code generation error: \(error)")
+            return nil
+        }
+    }
+    #endif
 }
 
 #Preview {

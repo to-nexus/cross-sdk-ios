@@ -83,6 +83,25 @@ public class CrossWalletManager: ObservableObject {
         }
     }
 
+    /// 지갑 연결용 딥링크 URL 생성 (QR 코드용)
+    public func generateConnectURL() async throws -> String {
+        do {
+            guard let uri = try await AppKit.instance.connect(walletUniversalLink: nil) else {
+                throw CrossSDKError.invalidURL
+            }
+            
+            let deeplinkUriString = "crossx://wc?uri=\(uri.deeplinkUri)"
+            
+            print("🔗 CrossWalletManager: Generated connect URL: \(deeplinkUriString)")
+            
+            return deeplinkUriString
+            
+        } catch {
+            print("❌ CrossWalletManager: Failed to generate connect URL: \(error)")
+            throw error
+        }
+    }
+
     /// 지갑 연결 해제
     public func disconnectWallet() async throws {
         guard let session = CrossSDKSwift.shared.getCurrentSession() else {

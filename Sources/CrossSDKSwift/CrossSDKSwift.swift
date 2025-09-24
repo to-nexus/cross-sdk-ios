@@ -146,6 +146,12 @@ public final class CrossSDKSwift: ObservableObject {
         try await walletManager.connectWallet()
     }
 
+    /// Generate connection URL for QR code display
+    /// - Returns: Deep link URL string for wallet connection
+    public func generateConnectURL() async throws -> String {
+        return try await walletManager.generateConnectURL()
+    }
+
     public func appKitPresent() {
         AppKit.present()
     }
