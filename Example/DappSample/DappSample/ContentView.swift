@@ -204,7 +204,7 @@ struct WalletConnectionView: View {
             } else {
                 VStack(spacing: 12) {
                     // 기존 연결 버튼
-                    Button("Connect Wallet") {
+                    Button("Connect Wallet (Direct)") {
                         print("🎯 DappSample: Connect Wallet button pressed")
                         Task {
                             do {
@@ -218,17 +218,54 @@ struct WalletConnectionView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     
-                    // QR 코드 생성 버튼
-                    Button(isGeneratingURL ? "Generating QR..." : "Show QR Code") {
-                        generateQRCode()
+                    // QR 코드 연결 버튼
+                    Button(isGeneratingURL ? "Generating QR..." : "Connect with QR") {
+                        connectWithQRCode()
                     }
                     .buttonStyle(.bordered)
+                    .foregroundColor(.blue)
+                    .disabled(isGeneratingURL)
+                    
+                    Text("또는")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    // QR 코드만 표시하는 버튼
+                    Button("Show QR Code Only") {
+                        generateQRCode()
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .foregroundColor(.gray)
                     .disabled(isGeneratingURL)
                 }
             }
         }
         .sheet(isPresented: $showQRCode) {
             QRCodeView(url: connectURL ?? "")
+        }
+    }
+    
+    private func connectWithQRCode() {
+        print("🎯 DappSample: Connect with QR button pressed")
+        isGeneratingURL = true
+        Task {
+            do {
+                // URL 생성 및 연결 상태 업데이트
+                let url = try await sdk.generateConnectURL()
+                await MainActor.run {
+                    connectURL = url
+                    showQRCode = true
+                    isGeneratingURL = false
+                }
+                print("🎯 Generated QR URL for connection: \(url)")
+                print("🎯 QR Code modal will be shown - user can scan to connect")
+            } catch {
+                await MainActor.run {
+                    isGeneratingURL = false
+                }
+                print("❌ QR connection error: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -402,43 +439,87 @@ struct ImmediateChainSwitchView: View {
 struct QRCodeView: View {
     let url: String
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var sdk = CrossSDKSwift.shared
+    @State private var connectionCheckTimer: Timer?
     
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                Text("지갑 연결 QR 코드")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Text("CROSSx 지갑으로 이 QR 코드를 스캔하세요")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                
-                // QR 코드 표시
-                qrCodeImage
-                    .frame(width: 250, height: 250)
-                    .background(Color.white)
-                    .cornerRadius(12)
-                    .shadow(radius: 4)
-                
-                // URL 텍스트 (디버깅용)
-                VStack(spacing: 8) {
-                    Text("연결 URL:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text(url)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .padding(8)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(6)
-                        .lineLimit(3)
+                // 연결 상태에 따른 제목 변경
+                if sdk.isConnected {
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.green)
+                        
+                        Text("연결 완료!")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.green)
+                        
+                        Text("지갑이 성공적으로 연결되었습니다")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                } else {
+                    VStack(spacing: 8) {
+                        Text("지갑 연결 QR 코드")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text("CROSSx 지갑으로 이 QR 코드를 스캔하세요")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
-                .padding(.horizontal)
+                
+                if !sdk.isConnected {
+                    // QR 코드 표시
+                    qrCodeImage
+                        .frame(width: 250, height: 250)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .shadow(radius: 4)
+                    
+                    // 연결 대기 상태 표시
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("연결 대기 중...")
+                            .font(.subheadline)
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.vertical, 8)
+                    
+                    // URL 텍스트 (디버깅용)
+                    VStack(spacing: 8) {
+                        Text("연결 URL:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(url)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(8)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(6)
+                            .lineLimit(3)
+                    }
+                    .padding(.horizontal)
+                }
                 
                 Spacer()
+                
+                // 연결 완료 시 닫기 버튼
+                if sdk.isConnected {
+                    Button("완료") {
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.bottom)
+                }
             }
             .padding()
             .navigationTitle("QR 연결")
@@ -449,6 +530,12 @@ struct QRCodeView: View {
                         dismiss()
                     }
                 }
+            }
+            .onAppear {
+                startConnectionMonitoring()
+            }
+            .onDisappear {
+                stopConnectionMonitoring()
             }
         }
     }
@@ -481,27 +568,45 @@ struct QRCodeView: View {
         }
     }
     
+    private func startConnectionMonitoring() {
+        print("🎯 QRCodeView: Starting connection monitoring")
+        // 연결 상태 변화 감지를 위한 타이머는 필요 없음 - @ObservedObject가 자동으로 처리
+        // 하지만 연결 완료 시 자동 닫기를 위한 딜레이 추가
+        connectionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            if sdk.isConnected {
+                print("🎯 QRCodeView: Connection detected - will auto-dismiss in 2 seconds")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    dismiss()
+                }
+                stopConnectionMonitoring()
+            }
+        }
+    }
+    
+    private func stopConnectionMonitoring() {
+        print("🎯 QRCodeView: Stopping connection monitoring")
+        connectionCheckTimer?.invalidate()
+        connectionCheckTimer = nil
+    }
+    
     #if canImport(QRCode)
     private func generateQRCode(from string: String) -> UIImage? {
-        do {
-            let doc = QRCode.Document(
-                utf8String: string,
-                errorCorrection: .medium
-            )
-            
-            // QR 코드 스타일 설정
-            doc.design.additionalQuietZonePixels = 2
-            doc.design.style.eye = QRCode.FillStyle.Solid(UIColor.black.cgColor)
-            doc.design.style.pupil = QRCode.FillStyle.Solid(UIColor.black.cgColor)
-            doc.design.style.onPixels = QRCode.FillStyle.Solid(UIColor.black.cgColor)
-            doc.design.style.background = QRCode.FillStyle.Solid(UIColor.white.cgColor)
-            
-            let cgImage = try doc.cgImage(CGSize(width: 500, height: 500))
-            return UIImage(cgImage: cgImage)
-        } catch {
-            print("❌ QR Code generation error: \(error)")
+        let doc = QRCode.Document(
+            utf8String: string,
+            errorCorrection: .medium
+        )
+        
+        // QR 코드 스타일 설정
+        doc.design.additionalQuietZonePixels = 2
+        doc.design.style.eye = QRCode.FillStyle.Solid(UIColor.black.cgColor)
+        doc.design.style.pupil = QRCode.FillStyle.Solid(UIColor.black.cgColor)
+        doc.design.style.onPixels = QRCode.FillStyle.Solid(UIColor.black.cgColor)
+        doc.design.style.background = QRCode.FillStyle.Solid(UIColor.white.cgColor)
+        
+        guard let cgImage = try? doc.cgImage(CGSize(width: 500, height: 500)) else {
             return nil
         }
+        return UIImage(cgImage: cgImage)
     }
     #endif
 }
