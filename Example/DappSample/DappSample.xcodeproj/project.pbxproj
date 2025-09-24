@@ -224,7 +224,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				13977AD72E443D4B00F0C2AF /* XCRemoteSwiftPackageReference "CryptoSwift" */,
-				13D5D5DE2E5D8F4600FBD9A4 /* XCLocalSwiftPackageReference "../../../cross-sdk-ios" */,
+				13D5D5DE2E5D8F4600FBD9A4 /* XCLocalSwiftPackageReference "../../" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 13A5B29C2E434D7900AC12C9 /* Products */;
@@ -624,9 +624,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		13D5D5DE2E5D8F4600FBD9A4 /* XCLocalSwiftPackageReference "../../../cross-sdk-ios" */ = {
+		13D5D5DE2E5D8F4600FBD9A4 /* XCLocalSwiftPackageReference "../../" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../cross-sdk-ios";
+			relativePath = ../../;
 		};
 /* End XCLocalSwiftPackageReference section */
 
