@@ -1,5 +1,7 @@
 import SwiftUI
 import CrossSDKSwift
+import CrossAppKit
+import WalletConnectSign
 
 struct SigningExampleView: View {
     @State private var selectedSigningType: CrossSigningType = .personalSign
@@ -23,7 +25,6 @@ struct SigningExampleView: View {
                     headerSection
                     signingTypeSelector
                     inputSection
-                    signButton
                     resultSection
                 }
                 .padding()
@@ -43,6 +44,7 @@ struct SigningExampleView: View {
                     SignatureResultView(result: result)
                 }
             }
+            .safeAreaInset(edge: .bottom) { bottomSignBar }
         }
     }
     
@@ -191,6 +193,15 @@ struct SigningExampleView: View {
         }
         .disabled(isLoading || !isInputValid)
     }
+
+    private var bottomSignBar: some View {
+        VStack(spacing: 0) {
+            signButton
+                .padding(.horizontal)
+                .padding(.bottom, 10)
+        }
+        .background(Color(.systemBackground).opacity(0.9))
+    }
     
     private var resultSection: some View {
         Group {
@@ -262,6 +273,7 @@ struct SigningExampleView: View {
     }
     
     private func performSigning() {
+        dismissKeyboard()
         Task {
             await signMessage()
         }
@@ -272,6 +284,9 @@ struct SigningExampleView: View {
         isLoading = true
         errorMessage = nil
         signatureResult = nil
+        
+        // 세션 디버깅 정보 출력
+        debugSessionInfo()
         
         do {
             let result: CrossSigningResult
@@ -307,7 +322,65 @@ struct SigningExampleView: View {
         
         isLoading = false
     }
+    
+    // MARK: - 디버깅 메서드
+    private func debugSessionInfo() {
+        print("🔍 === 세션 디버깅 정보 ===")
+        
+        // AppKit 세션 확인
+        let sessions = AppKit.instance.getSessions()
+        print("🔍 AppKit 세션 개수: \(sessions.count)")
+        
+        if let session = sessions.first {
+            print("🔍 세션 토픽: \(session.topic)")
+            print("🔍 세션 네임스페이스: \(session.namespaces.keys)")
+            
+            // eip155 네임스페이스 확인
+            if let eip155Namespace = session.namespaces["eip155"] {
+                print("🔍 eip155 계정들: \(eip155Namespace.accounts)")
+                print("🔍 eip155 허용된 메서드들: \(Array(eip155Namespace.methods))")
+                print("🔍 eip155 이벤트들: \(Array(eip155Namespace.events))")
+                
+                // eth_sign 메서드 확인
+                let hasEthSign = eip155Namespace.methods.contains("eth_sign")
+                print("🔍 eth_sign 메서드 포함 여부: \(hasEthSign ? "✅" : "❌")")
+                
+                // 현재 체인 확인
+                if let currentChain = CrossSDKSwift.shared.currentChain {
+                    print("🔍 현재 체인: \(currentChain.name) (\(currentChain.rawValue))")
+                    
+                    // 현재 체인에 대한 권한 확인
+                    if let blockchain = Blockchain(namespace: "eip155", reference: currentChain.rawValue) {
+                        // 수동으로 권한 확인
+                        let hasAccount = eip155Namespace.accounts.contains { $0.blockchain == blockchain }
+                        let hasEthSignMethod = eip155Namespace.methods.contains("eth_sign")
+                        let hasPermission = hasAccount && hasEthSignMethod
+                        
+                        print("🔍 현재 체인 계정 존재: \(hasAccount ? "✅" : "❌")")
+                        print("🔍 eth_sign 메서드 존재: \(hasEthSignMethod ? "✅" : "❌")")
+                        print("🔍 현재 체인에서 eth_sign 권한: \(hasPermission ? "✅" : "❌")")
+                        
+                        // 계정 상세 정보
+                        let matchingAccounts = eip155Namespace.accounts.filter { $0.blockchain == blockchain }
+                        print("🔍 매칭되는 계정들: \(matchingAccounts)")
+                    }
+                }
+            } else {
+                print("🔍 ❌ eip155 네임스페이스를 찾을 수 없음")
+            }
+        } else {
+            print("🔍 ❌ 활성 세션이 없음")
+        }
+        
+        print("🔍 === 디버깅 정보 끝 ===")
+    }
 }
+
+#if canImport(UIKit)
+private func dismissKeyboard() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+}
+#endif
 
 struct SigningTypeCard: View {
     let signingType: CrossSigningType

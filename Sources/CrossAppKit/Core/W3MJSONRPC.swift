@@ -63,13 +63,14 @@ public enum W3MJSONRPC: Codable {
         options: WatchAssetOptions
     )
     
-    public var rawValues: (method: String, params: [String: Any]) {
+    public var rawValues: (method: String, params: [[String: Any]]) {
         let json = try! JSONEncoder().encode(self)
         let dictionary = try! JSONSerialization.jsonObject(with: json) as! [String: [String: Any]]
         
         let method = dictionary.keys.first!
         let params = dictionary[method]!
-        return (method, params)
+        let paramsArray = [params]
+        return (method, paramsArray)
     }
 }
 
